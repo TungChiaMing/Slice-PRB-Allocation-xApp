@@ -17,11 +17,21 @@
 
 find_package(Protobuf REQUIRED)
 
-add_executable( ts_xapp ts_xapp.cpp )
-target_link_libraries( ts_xapp ricxfcpp;rmr_si;pthread;curl;rc-api;grpc++;${Protobuf_LIBRARY} )
+
+add_executable( sla-spa ts_xapp.cpp )
+#link_libraries(InfluxDB)
+#find_package(InfluxDB) 
+#ADD_LIBRARY(InfluxDB SHARED IMPORTED)
+#SET_TARGET_PROPERTIES(InfluxDB PROPERTIES IMPORTED_LOCATION /usr/local/lib/libInfluxDB.so)
+
+#set(CMAKE_PREFIX_PATH /usr/local/lib)
+#find_library(InfluxDB libInfluxDB.so REQUIRED PATHS /usr/local/lib/libInfluxDB.so)
+#find_package(InfluxDB CONFIG REQUIRED)
+#target_include_directories(ts_xapp PRIVATE /usr/local/include)
+target_link_libraries( sla-spa InfluxDB;ricxfcpp;rmr_si;pthread;curl;rc-api;grpc++;${Protobuf_LIBRARY};mdclog)
 
 install(
-    TARGETS ts_xapp
+    TARGETS sla-spa
     DESTINATION ${install_bin}
 )
 

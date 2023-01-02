@@ -1,0 +1,21 @@
+nrCellIdentity,prb_usage,ue-id,nbCellIdentity_0,nbCellIdentity_1,nbCellIdentity_2,nbCellIdentity_3,nbCellIdentity_4,Slices
+c13/N77,77,Train passenger 2,c13/B13,c13/B2,c4/N77,c12/N77,c5/N77,embb_urllc
+c2/N77,58,Waiting passenger 3,c2/B13,c10/N77,c3/N77,c9/N77,c2/B2,embb_urllc_mmtc
+c3/N77,56,Waiting passenger 9,c2/N77,c3/B13,c10/N77,c1/N77,c3/B2,mmtc
+c3/B13,45,Waiting passenger 1,c3/N77,c2/B13,c3/B2,c10/B13,c1/B13,urllc_mmtc
+c9/N77,59,Waiting passenger 5,c9/B13,c2/N77,c8/N77,c10/N77,c9/B2,embb
+c5/B13,91,Car-3,c5/B2,c5/N77,c4/B13,c1/B13,c6/B13,embb_mmtc
+c3/B13,45,Waiting passenger 2,c3/N77,c3/B2,c10/B13,c2/B13,c11/B13,urllc
+c9/N77,52,Waiting passenger 6,c9/B13,c2/N77,c8/N77,c10/N77,c9/B2,embb
+c13/B13,45,Train passenger 1,c13/B2,c13/N77,c4/B13,c12/B13,c5/B13,embb_mmtc
+c6/B13,62,Pedestrian-2,c6/B2,c6/N77,c7/B13,c1/B13,c5/B13,urllc
+c13/B13,45,Train passenger 3,c13/B2,c13/N77,c4/B13,c12/B13,c5/B13,embb_urllc_mmtc
+c10/N77,48,Waiting passenger 8,c10/B13,c9/N77,c10/B2,c2/N77,c3/N77,mmtc
+c1/B13,30,Pedestrian-1,c1/B2,c1/N77,c3/B13,c4/B13,c2/B13,urllc_mmtc
+c1/B13,30,Car-4,c1/B2,c1/N77,c3/B13,c4/B13,c2/B13,embb_urllc
+c1/B13,30,Car-2,c1/B2,c1/N77,c4/B13,c5/B13,c6/B13,embb_mmtc
+c9/B13,45,Waiting passenger 4,c9/N77,c2/B13,c10/B13,c8/B13,c9/B2,urllc
+c2/N77,50,Waiting passenger 7,c2/B13,c3/N77,c2/B2,c10/N77,c1/N77,embb_urllc_mmtc
+c9/B13,45,Waiting passenger 10,c9/N77,c10/B13,c9/B2,c2/B13,c8/B13,urllc
+c2/B13,91,Car-1,c2/B2,c2/N77,c8/B13,c3/B13,c10/B13,embb
+c4/B2,83,Pedestrian-3,c13/B2,c4/B13,c4/N77,c12/B2,c5/B2,embb_mmtc

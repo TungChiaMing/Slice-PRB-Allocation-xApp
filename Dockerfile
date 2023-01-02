@@ -34,7 +34,9 @@
 FROM nexus3.o-ran-sc.org:10002/o-ran-sc/bldr-ubuntu20-c-go:1.0.0 as buildenv
 
 # spaces to save things in the build image to copy to final image
-RUN mkdir -p /playpen/assets /playpen/src /playpen/bin
+
+###################influxdb dummy data 
+RUN mkdir -p /playpen/assets /playpen/src /playpen/bin /playpen/influxdb-dummy-data  
 ARG SRC=.
 
 WORKDIR /playpen
@@ -44,9 +46,21 @@ ARG RMR_VER=4.7.4
 # ARG SDL_VER=1.0.4
 ARG XFCPP_VER=2.3.3
 
+
+#########   Ken Install mdclog, set versions ###
+
+ARG MDC_VER=0.0.4-1
+
+
 # package cloud urls for wget
 ARG PC_REL_URL=https://packagecloud.io/o-ran-sc/release/packages/debian/stretch
 # ARG PC_STG_URL=https://packagecloud.io/o-ran-sc/staging/packages/debian/stretch
+
+
+#########   Ken pull in mdclog ###
+RUN wget -nv --content-disposition ${PC_REL_URL}/mdclog_${MDC_VER}_amd64.deb/download.deb && \
+    wget -nv --content-disposition ${PC_REL_URL}/mdclog-dev_${MDC_VER}_amd64.deb/download.deb && \
+    dpkg -i mdclog_${MDC_VER}_amd64.deb mdclog-dev_${MDC_VER}_amd64.deb
 
 # pull in rmr
 RUN wget -nv --content-disposition ${PC_REL_URL}/rmr_${RMR_VER}_amd64.deb/download.deb && \
@@ -74,11 +88,59 @@ RUN git clone https://github.com/Tencent/rapidjson && \
    cd ${STAGE_DIR} && \
    rm -rf rapidjson
 
+#########   Ken Install influxDB ###
+
+#### Enhance ####  
+#COPY influxdb-cxx/* ./influxdb-cxx/
+#RUN rm -rf /root/influxdb-cxx
+
+
+#RUN apt-get update --fix-missing
+#RUN apt-get update &&  apt-get install -y \
+#    curl \
+#    libcurl4-openssl-dev \
+#    libboost-all-dev \  
+#    python3-pip
+#RUN pip install conan
+	
+#RUN git clone https://github.com/offa/influxdb-cxx.git && \
+#RUN cd influxdb-cxx && \
+#	mkdir build && \
+#	cd build && \
+#	cmake -D INFLUXCXX_TESTING:BOOL=OFF .. && \
+#	make install && \
+#	cd ${STAGE_DIR} && \
+#	rm -rf influxdb-cxx
+#RUN ldconfig
+####################################
+
+#RUN git clone https://github.com/awegrzyn/influxdb-cxx.git
+#RUN git clone https://github.com/offa/influxdb-cxx.git
+#RUN cd influxdb-cxx && mkdir build && cd build && cmake -D INFLUXCXX_TESTING:BOOL=OFF .. && make install
+#RUN ldconfig
+
+
 # install curl and gRPC dependencies
+RUN apt-get update --fix-missing
 RUN apt-get update && apt-get install -y \
-	libcurl4-openssl-dev \
+    libcurl4-openssl-dev \
 	libprotobuf-dev \
 	libgrpc++-dev
+
+
+
+### # # #  #######   # ken install influxdb dependencies
+
+
+RUN apt-get update --fix-missing
+RUN apt-get update &&  apt-get install -y \
+    curl \
+    libcurl4-openssl-dev \
+    libboost-all-dev  
+	
+
+
+
 
 #
 # build and install the application(s)
@@ -95,16 +157,26 @@ RUN cd /playpen/src && \
 #
 COPY assets/bootstrap.rt /playpen/assets
 
+#################Influxdb dummy data 
+#
+COPY influxdb-dummy-data/* /playpen/influxdb-dummy-data/
+
+
 #
 # any scripts that are needed; copy to /playpen/bin
 #
 
+#FROM ubuntu:18.04
+#COPY --from=buildenv /usr/local/include/*.h /usr/local/include/
+#COPY --from=buildenv /usr/local/lib/* /usr/local/lib/
+
 
 # -----  create final, smaller, image ----------------------------------
 FROM ubuntu:20.04
-
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Taipei
 # # package cloud urls for wget
-# ARG PC_REL_URL=https://packagecloud.io/o-ran-sc/release/packages/debian/stretch
+ARG PC_REL_URL=https://packagecloud.io/o-ran-sc/release/packages/debian/stretch
 # ARG PC_STG_URL=https://packagecloud.io/o-ran-sc/staging/packages/debian/stretch
 # ARG SDL_VER=1.0.4
 
@@ -116,9 +188,22 @@ FROM ubuntu:20.04
 # 	wget -nv --content-disposition ${PC_STG_URL}/sdl-dev_${SDL_VER}-1_amd64.deb/download.deb &&\
 # 	dpkg -i sdl-dev_${SDL_VER}-1_amd64.deb sdl_${SDL_VER}-1_amd64.deb
 
+#########   Ken pull in mdclog, install the package ###
+RUN apt-get update
+RUN apt-get install -y wget
+#########   Ken pull in mdclog ###
+ARG MDC_VER=0.0.4-1
+RUN wget -nv --content-disposition ${PC_REL_URL}/mdclog_${MDC_VER}_amd64.deb/download.deb && \
+    wget -nv --content-disposition ${PC_REL_URL}/mdclog-dev_${MDC_VER}_amd64.deb/download.deb && \
+    dpkg -i mdclog_${MDC_VER}_amd64.deb mdclog-dev_${MDC_VER}_amd64.deb
+
+
+
+
 # RUN rm -fr /var/lib/apt/lists
 
 # install curl and gRPC dependencies in the final image
+RUN apt-get update --fix-missing
 RUN apt-get update && apt-get install -y \
 	libcurl4-openssl-dev \
 	libprotobuf-dev \
@@ -126,20 +211,23 @@ RUN apt-get update && apt-get install -y \
 	rm -rf /var/lib/apt/lists/*
 
 
+
+
 # snarf the various sdl, rmr, and cpp-framework libraries as well as any binaries
 # created (e.g. rmr_rprobe) and the application binary itself
 #
 COPY --from=buildenv /usr/local/lib /usr/local/lib/
-COPY --from=buildenv /usr/local/bin/rmr_probe /usr/local/bin/ts_xapp /usr/local/bin/
+COPY --from=buildenv /usr/local/bin/rmr_probe /usr/local/bin/sla-spa /usr/local/bin/
 COPY --from=buildenv /playpen/bin /usr/local/bin/
-COPY --from=buildenv /playpen/assets /data
+COPY --from=buildenv /playpen/assets /playpen/influxdb-dummy-data /data/
 
 
 ENV PATH=/usr/local/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib
 
+
 WORKDIR /data
-COPY --from=buildenv /playpen/assets/* /data
+COPY --from=buildenv /playpen/assets/* /playpen/influxdb-dummy-data/* /data/
 
 # if needed, set RMR vars
 ENV RMR_SEED_RT=/data/bootstrap.rt
@@ -148,4 +236,4 @@ ENV RMR_SRC_ID=service-ricxapp-trafficxapp-rmr.ricxapp:4560
 ENV RMR_VCTL_FILE=/tmp/rmr.v
 RUN echo "2" >/tmp/rmr.v
 
-CMD [ "/usr/local/bin/ts_xapp" ]
+CMD [ "/usr/local/bin/sla-spa" ]

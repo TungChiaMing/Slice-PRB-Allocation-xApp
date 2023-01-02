@@ -30,6 +30,12 @@
 #
 
 project( ricxfcpp )
+set(CMAKE_VERBOSE_MAKEFILE off)
+
+set(CMAKE_CXX_STANDARD 17)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEV_PKG=1")
+
 cmake_minimum_required( VERSION 3.14 )
 
 set( major_version "1" )		# until CI supports auto tagging; must hard set
@@ -38,7 +44,17 @@ set( patch_level "0" )
 
 set( install_root "${CMAKE_INSTALL_PREFIX}" )
 set( install_inc "/usr/local/include" )
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASN_PDU_COLLECTION -L. -LE2-AGENT/tracelibcpp/build -ggdb3 -Wall -W -Wpedantic")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASN_PDU_COLLECTION -L. -O3 -L/usr/lib -Wall -Wpedantic")
+    #only c code with -O3
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DASN_PDU_COLLECTION -L. -O3 -L/usr/lib -Wall -W -Wpedantic")
+else ()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASN_PDU_COLLECTION -L. -ggdb3 --coverage -L/usr/lib -Wall -Wpedantic")
+    #only c code with -O3
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DASN_PDU_COLLECTION -L. -ggdb3 -L/usr/lib -Wall -W -Wpedantic")
 
+endif ()
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
 include( GNUInstallDirs )
@@ -95,6 +111,8 @@ unset( GPROF CACHE )					# ensure this does not persist
 
 # protobuf and grpc stufs
 add_subdirectory( ext/protobuf )
+# influxdb enhanced
+add_subdirectory( influxdb-cxx )
 
 # each binary is built from a subset
 add_subdirectory( src/ts_xapp )

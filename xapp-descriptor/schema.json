@@ -18,10 +18,10 @@
       "$id": "#/properties/controls/items/properties/ts_control_ep",
       "type": "string",
       "title": "The target endpoint of the TS Control API",
-      "default": "http://127.0.0.1:5000/api/echo",
+      "default": "http://10.107.191.160:7777/api/echo",
       "examples": [
-        "http://127.0.0.1:5000/api/echo",
-        "localhost:50051"
+        "http://10.107.191.160:7777/api/echo",
+        "localhost:7777"
       ]
     }
   }

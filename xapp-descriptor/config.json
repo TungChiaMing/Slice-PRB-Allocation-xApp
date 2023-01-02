@@ -51,7 +51,7 @@
         },
         "controls": {
             "ts_control_api": "grpc",
-            "ts_control_ep": "localhost:50051"
+            "ts_control_ep": "10.107.191.160:7777"
         }
 
     }

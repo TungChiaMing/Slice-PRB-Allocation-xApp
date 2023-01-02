@@ -18,7 +18,7 @@
 namespace api {
 
 static const char* MsgComm_method_names[] = {
-  "/api.MsgComm/SendRICControlReqServiceGrpc",
+  "/rc.MsgComm/SendRICControlReqServiceGrpc",
 };
 
 std::unique_ptr< MsgComm::Stub> MsgComm::NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options) {

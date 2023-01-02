@@ -24,7 +24,7 @@
 	g++ -g ${prereq%% *} -c 
 
 % :: %.cpp
-	g++ $< -g -o $@  -lricxfcpp -lrmr_si -lpthread -lm -lsdl
+	g++ $< -g -o $@  -lricxfcpp -lrmr_si -lpthread -lm -lsdl 
 
 all:: ts_xapp
 

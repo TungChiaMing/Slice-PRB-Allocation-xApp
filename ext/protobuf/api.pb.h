@@ -208,13 +208,13 @@ class RICE2APHeader : public ::google::protobuf::Message /* @@protoc_insertion_p
 
   // accessors -------------------------------------------------------
 
-  // int64 RanFuncId = 1;
+  ::google::protobuf::int64 RanFuncId = 1;
   void clear_ranfuncid();
   static const int kRanFuncIdFieldNumber = 1;
   ::google::protobuf::int64 ranfuncid() const;
   void set_ranfuncid(::google::protobuf::int64 value);
 
-  // int64 RICRequestorID = 2;
+  ::google::protobuf::int64 RICRequestorID = 2;
   void clear_ricrequestorid();
   static const int kRICRequestorIDFieldNumber = 2;
   ::google::protobuf::int64 ricrequestorid() const;
@@ -318,7 +318,7 @@ class RICControlHeader : public ::google::protobuf::Message /* @@protoc_insertio
 
   // accessors -------------------------------------------------------
 
-  // string UEID = 3;
+  ::std::string UEID = "3";
   void clear_ueid();
   static const int kUEIDFieldNumber = 3;
   const ::std::string& ueid() const;
@@ -332,13 +332,13 @@ class RICControlHeader : public ::google::protobuf::Message /* @@protoc_insertio
   ::std::string* release_ueid();
   void set_allocated_ueid(::std::string* ueid);
 
-  // int64 ControlStyle = 1;
+  ::google::protobuf::int64 ControlStyle = 1;
   void clear_controlstyle();
   static const int kControlStyleFieldNumber = 1;
   ::google::protobuf::int64 controlstyle() const;
   void set_controlstyle(::google::protobuf::int64 value);
 
-  // int64 ControlActionId = 2;
+  ::google::protobuf::int64 ControlActionId = 2;
   void clear_controlactionid();
   static const int kControlActionIdFieldNumber = 2;
   ::google::protobuf::int64 controlactionid() const;
@@ -443,7 +443,7 @@ class RICControlMessage : public ::google::protobuf::Message /* @@protoc_inserti
 
   // accessors -------------------------------------------------------
 
-  // string TargetCellID = 2;
+  ::std::string TargetCellID = "c2B13";
   void clear_targetcellid();
   static const int kTargetCellIDFieldNumber = 2;
   const ::std::string& targetcellid() const;
@@ -457,7 +457,7 @@ class RICControlMessage : public ::google::protobuf::Message /* @@protoc_inserti
   ::std::string* release_targetcellid();
   void set_allocated_targetcellid(::std::string* targetcellid);
 
-  // .api.RICControlCellTypeEnum RICControlCellTypeVal = 1;
+  ::api::RICControlCellTypeEnum RICControlCellTypeVal = (::api::RICControlCellTypeEnum)1;
   void clear_riccontrolcelltypeval();
   static const int kRICControlCellTypeValFieldNumber = 1;
   ::api::RICControlCellTypeEnum riccontrolcelltypeval() const;
@@ -603,7 +603,8 @@ class RicControlGrpcReq : public ::google::protobuf::Message /* @@protoc_inserti
   ::std::string* release_ranname();
   void set_allocated_ranname(::std::string* ranname);
 
-  // .api.RICE2APHeader RICE2APHeaderData = 4;
+/* Ken Debug Set RICE2APHeaderData */
+//::api::RICE2APHeader RICE2APHeaderData = 4;
   bool has_rice2apheaderdata() const;
   void clear_rice2apheaderdata();
   static const int kRICE2APHeaderDataFieldNumber = 4;
@@ -615,7 +616,8 @@ class RicControlGrpcReq : public ::google::protobuf::Message /* @@protoc_inserti
   ::api::RICE2APHeader* mutable_rice2apheaderdata();
   void set_allocated_rice2apheaderdata(::api::RICE2APHeader* rice2apheaderdata);
 
-  // .api.RICControlHeader RICControlHeaderData = 5;
+/* Ken Debug Set RICControlHeaderData */
+//::api::RICE2APHeader RICControlHeaderData = 5;
   bool has_riccontrolheaderdata() const;
   void clear_riccontrolheaderdata();
   static const int kRICControlHeaderDataFieldNumber = 5;
@@ -627,7 +629,7 @@ class RicControlGrpcReq : public ::google::protobuf::Message /* @@protoc_inserti
   ::api::RICControlHeader* mutable_riccontrolheaderdata();
   void set_allocated_riccontrolheaderdata(::api::RICControlHeader* riccontrolheaderdata);
 
-  // .api.RICControlMessage RICControlMessageData = 6;
+//::api::RICControlMessage RICControlMessageData = 6;
   bool has_riccontrolmessagedata() const;
   void clear_riccontrolmessagedata();
   static const int kRICControlMessageDataFieldNumber = 6;
