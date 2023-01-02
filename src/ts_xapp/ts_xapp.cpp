@@ -1177,9 +1177,23 @@ mdclog_write(MDCLOG_INFO,"Slice=%s , Slice_PRB=%d", s.first.c_str() , stoi(ue_gr
 
 }
        
+/* 
+
+It only accept the three argument below
+1. std::vector<UE> ue_list, 
+2. std::vector<Cell> cell_list, 
+3. std::vector<std::string> slice_list
+
+struct UE and struct Cell has already defined in the ts_xapp.cpp
+
+For now, slice list only accept three slice , respectively , embb , mmtc , urllc
+
+declear the vector variable of UE and Cell , and then read your dummy data to use it!
+
+*/
 
 void slice_allocation(std::vector<UE> &ue_list, std::vector<Cell> &cell_list, std::vector<std::string> &slice_list){
-    
+    // do slice allocation
 
     Updata_scenario updata_scenario;
     for(int k = 0 ; k < ue_list.size() ; k++){
