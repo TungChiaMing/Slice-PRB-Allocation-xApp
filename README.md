@@ -113,7 +113,7 @@ application is located at the test/app directory.
 
 - example
 <div>
-<img src="https://github.com/TungChiaMing/SLA-Slice-PRB-Allocation-xApp/blob/e-release/screenshots/example_csv.png" width="100%"/>
+<img src="https://github.com/TungChiaMing/Slice-PRB-Allocation-xApp/tree/e-release/screenshots/example_csv.png" width="100%"/>
 </div>
 
 
