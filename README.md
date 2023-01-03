@@ -74,6 +74,8 @@ application is located at the test/app directory.
 
 
 
+Modification is based on osc ric-app-ts branch e-release  https://github.com/o-ran-sc/ric-app-ts
+
 ## New functions designed by K. D.
 
 - There're three new functions added in ts_xapp.cpp
@@ -213,6 +215,10 @@ if(fin.good()){
 
 ###  Manipulate data - write influxdb
 
+
+Modification is based on offa InfluxDB C++ client library branch master https://github.com/offa/influxdb-cxx
+
+
 - why   
     - write influxdb so that we can see the visualized data
 
@@ -224,6 +230,7 @@ if(fin.good()){
 
 
 ```cpp
+/* using the source code from offa InfluxDB C++ client library branch master */
 // assign a variable to get the return address of influxdb
 
 auto db_influx = influxdb::InfluxDBFactory::Get(influxdb_url);
@@ -231,6 +238,7 @@ auto db_influx = influxdb::InfluxDBFactory::Get(influxdb_url);
 ```
 
 ```cpp
+/* using the source code from offa InfluxDB C++ client library branch master */
 // write influxdb with a point
 
 db_influx->write(influxdb::Point{"slice_usage"}

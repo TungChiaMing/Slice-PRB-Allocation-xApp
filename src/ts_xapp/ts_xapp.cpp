@@ -105,6 +105,8 @@ using Keys = std::set<Key>;
 //----- Ken Create the Route for InfluxDB
 
 string influxdb_url = "http://ricplt-influxdb.ricplt:8086?db=UEData";
+/* using the source code from offa InfluxDB C++ client library branch master */
+// assign a variable to get the return address of influxdb
 auto db_influx = influxdb::InfluxDBFactory::Get(influxdb_url);
 // ----------------------------------------------------------
 std::unique_ptr<Xapp> xfw;
@@ -1985,7 +1987,8 @@ clock_t end = clock();
     printf("******************************************************elapsed    time     = %f******************************************************\n", (double)(end - begin) / CLOCKS_PER_SEC);
 
 
-
+/* using the source code from offa InfluxDB C++ client library branch master */
+// write influxdb with a point
 for(int i=0 ; i < UE_Group.size() ; i++){
     db_influx->write(influxdb::Point{"slice_usage"}
     //.addTag("ue-id", UE_Group[i].Name  )   //  
