@@ -110,7 +110,7 @@ Modification is based on osc ric-app-ts branch e-release  https://github.com/o-r
     - since I just use the data downloaded from the RIC Test and save it as the file
 
 - Rule must be follow
-    - 1. The dummy data file needs to be a csv file
+    - 1. The dummy data file needs to be a csv file , location is `/influxdb-dummy-data`
     - 2. first row shall be the type of metrics , e.g., `ue-id` or `prb_usage`
 
 

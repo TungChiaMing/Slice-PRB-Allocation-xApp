@@ -1078,8 +1078,8 @@ ue_group[i]["nbCellIdentity_2"].c_str(), ue_group[i]["nbCellIdentity_3"].c_str()
                 cell_group[i]["availPrbDl"] = "0";
             }
 
-            //cout << "[Ken_Debug] : " << "Cell Name : " << cell_group[i]["nrCellIdentity"] << "\n";
-            //cout << "[Ken_Debug] : " << "Available PRB DL : " << stoi(cell_group[i]["availPrbDl"]) << "\n";
+            cout << "[Ken_Debug] : " << "Cell Name : " << cell_group[i]["nrCellIdentity"] << "\n";
+            cout << "[Ken_Debug] : " << "Available PRB DL : " << stoi(cell_group[i]["availPrbDl"]) << "\n";
 
 
 mdclog_write(MDCLOG_INFO,"Cell Info:  Cell_Name=%s , Available_PRB_DL=%d", cell_group[i]["nrCellIdentity"].c_str(), stoi(cell_group[i]["availPrbDl"]) );
@@ -1162,18 +1162,17 @@ mdclog_write(MDCLOG_INFO,"Start Init UE Slice PRB");
 
     /* Print UE Information */
     
-    for(int i=0;i<ue_group.size();i++){
-
-mdclog_write(MDCLOG_INFO,"ue-id=%s , PRB_using=%d", ue_group[i]["ue-id"].c_str(), stoi(ue_group[i]["prb_usage"]) );
-    }
-
     for(int i=0;i<UE_Group.size();i++){
 
-        for(const auto&s : UE_Group[i].Slice_prb_req){
-            //cout << "slice: " << s.first << ", " << " prb is : " << s.second << "\n";
-            mdclog_write(MDCLOG_INFO,"Slice=%s , Slice_PRB=%d", s.first.c_str() , s.second );
+mdclog_write(MDCLOG_INFO,"ue-id=%s , PRB_using=%d", ue_group[i]["ue-id"].c_str(), stoi(ue_group[i]["prb_usage"]) );
          
-        }
+		for(const auto&s : UE_Group[i].Slice_prb_req){ 
+             cout << "slice: " << s.first << ", " << " prb is : " << s.second << "\n";
+ 
+
+mdclog_write(MDCLOG_INFO,"Slice=%s , Slice_PRB=%d", s.first.c_str() , stoi(ue_group[i]["prb_usage"]) );
+         
+       }
         
     }
 
@@ -1459,15 +1458,27 @@ mdclog_write(MDCLOG_DEBUG,"start to handover both UE...");
                     }
                 }
 
+mdclog_write(MDCLOG_DEBUG,"handover done");
 
-
-mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_list[ue_k2_key].Name.c_str());
+mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_k.Name.c_str());
 
 mdclog_write(MDCLOG_DEBUG,"previous BS is %s", cell_list[handover_bs_key].Name.c_str());
 
 
+mdclog_write(MDCLOG_DEBUG,"current BS is %s" , cell_list[next_bs_index].Name.c_str());
 
-                update_load_b(ue_list[ue_k2_key], cell_list[handover_bs_key], slice_list, ue_k.Slice_prb_req, update);
+mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_list[ue_k2_key].Name.c_str());
+
+mdclog_write(MDCLOG_DEBUG,"previous BS is %s",  ue_list[ue_k2_key].Serv_cell.c_str());
+
+mdclog_write(MDCLOG_DEBUG,"current BS is %s" , cell_list[next_bs_index].Name.c_str());
+
+                //std::cout << "[Debug] handover bs is : " <<  cell_list[handover_bs_key].Name << "\n" ;
+                //std::cout << "[Debug] To bs  : " <<   cell_list[next_bs_index].Name << "\n" ;
+                //std::cout << "[Debug] ue_k2 : " << ue_list[ue_k2_key].Name << " handover  BS : " << ue_list[ue_k2_key].Serv_cell << "\n";
+                
+				update_load_b(ue_list[ue_k2_key], cell_list[handover_bs_key], slice_list, ue_k.Slice_prb_req, update);
+
 
 
                 //handover_request();
@@ -1487,21 +1498,15 @@ mdclog_write(MDCLOG_DEBUG,"previous BS is %s", cell_list[handover_bs_key].Name.c
 //ue_list[ue_k2_key].HO_cell = ue_list[ue_k2_key].Serv_cell;
                 update_load_b(ue_list[ue_k2_key], cell_list[next_bs_index], slice_list, ue_k.Slice_prb_req, update);
 
-mdclog_write(MDCLOG_DEBUG,"current BS is %s" , cell_list[next_bs_index].Name.c_str());
-
-
-
-mdclog_write(MDCLOG_DEBUG,"handover done");
-
             }
         }
         else{
     
-            //std::cout << "[Debug] NR_cell != 0 \n"; 
-
-mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another cell", ue_k.Name.c_str());
+            std::cout << "[Debug] NR_cell != 0 \n"; 
 
   
+mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another cell", ue_k.Name.c_str());
+
             unordered_map <int, Cell> next_bs_table ; 
            
             unordered_map <int, Cell> next_emp_bs_table ; 
@@ -1535,7 +1540,9 @@ mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another c
                 }
             }     
             
-    
+            for(auto &debug : next_bs_table){
+                //std::cout <<"table::cell_list key" << debug.first << "next bs : " << debug.second.Name <<"\n"; 
+            }
 
 
 
@@ -1560,7 +1567,7 @@ mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another c
 
                 }
                 if(slice_full != true){ 
-                       
+
                     next_emp_bs_table[next_bs_key_temp] = temp_cell ; 
                     //std::cout  << "next_bs name :" <<  next_emp_bs_table[next_bs_key_temp].Name <<"\n" ; 
                   
@@ -1568,7 +1575,9 @@ mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another c
                 }
                 
             }
- 
+            for(auto& check_emp : next_emp_bs_table){
+                //cout <<  "  cell_key  is :"<< check_emp.first <<  " name is : "  << check_emp.second.Name  <<"\n";
+            }
              
 
          
@@ -1591,26 +1600,27 @@ mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another c
             }
              
               
-              
 mdclog_write(MDCLOG_DEBUG,"find the Cell %s owing the most number of resources the UE need", cell_list[new_bs_key].Name.c_str());
 
 mdclog_write(MDCLOG_DEBUG,"start to handover the UE...");
 
+
+mdclog_write(MDCLOG_DEBUG,"handover done");
+
+
 mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_k.Name.c_str());
 
-
-
-            update = switch_to_nr;
-//ue_k.HO_cell = ue_k.Serv_cell ;
 mdclog_write(MDCLOG_DEBUG,"previous BS is %s", ue_k.Serv_cell.c_str());
 
 
+mdclog_write(MDCLOG_DEBUG,"current BS is %s" , cell_list[new_bs_key].Name.c_str());
+
+ 
+            //std::cout << "[Debug] next_bs is : " << cell_list[new_bs_key].Name << "\n";
+            update = switch_to_nr;
+//ue_k.HO_cell = ue_k.Serv_cell ;
             update_load_b(ue_k, cell_list[new_bs_key], slice_list, ue_k.Slice_prb_req, update);
         
-
-mdclog_write(MDCLOG_DEBUG,"current BS is %s" , ue_k.Serv_cell.c_str());
-
-mdclog_write(MDCLOG_DEBUG,"handover done");
 
 
         }
@@ -1640,7 +1650,9 @@ void update_load_b(UE &ue_k, Cell &new_bs, std::vector<std::string> &slice_list,
         //std::cout << "[Debug] (stay) ue Serv Cell : " << new_bs.Name << "\n";
 
         //std::cout << "[Debug] ue  NR Cell : \n";  
- 
+        for(const auto& n:  ue_k.NR_cell)
+            //std::cout << n << "\n";      
+
         for(const auto& s : slice_provide_map)
             ue_k.Slice_prb_used[s.first] = s.second;
         for(const auto&s: slice_provide_map){
@@ -1682,7 +1694,10 @@ ue_k.HO_cell = ue_k.Serv_cell;
         //std::cout << "[Debug] (switch_to_nr)ue new Serv Cell : " << new_bs.Name << "\n";
         
         //std::cout << "[Debug] ue new NR Cell : \n";
- 
+        for(const auto& n:  ue_k.NR_cell)
+            //std::cout << n << "\n"; 
+
+
         for(const auto&s: slice_provide_map){
 
             //std::cout << "[Ken Debug]  PRB Using is  : "<< s.first << ", prb is " << s.second << "\n";
