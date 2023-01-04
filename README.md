@@ -74,9 +74,11 @@ application is located at the test/app directory.
 
 
 
-Modification is based on osc ric-app-ts branch e-release  https://github.com/o-ran-sc/ric-app-ts
+## New functions by K. D.
 
-## New functions designed by K. D.
+Contents above is from  osc ric-app-ts branch e-release  https://github.com/o-ran-sc/ric-app-ts 
+Modification below is based on osc ric-app-ts branch e-release  https://github.com/o-ran-sc/ric-app-ts
+
 
 - There're three new functions added in ts_xapp.cpp
     - random slice PRB
