@@ -77,6 +77,8 @@ application is located at the test/app directory.
 ## New functions by K. D.
 
 Contents above is from  osc ric-app-ts branch e-release  https://github.com/o-ran-sc/ric-app-ts 
+
+
 Modification below is based on osc ric-app-ts branch e-release  https://github.com/o-ran-sc/ric-app-ts
 
 
