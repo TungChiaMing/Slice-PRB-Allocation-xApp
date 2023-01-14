@@ -1,0 +1,3 @@
+[submodule "influxdb-cxx"]
+	path = influxdb-cxx
+	url = https://github.com/offa/influxdb-cxx.git
