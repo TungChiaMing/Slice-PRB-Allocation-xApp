@@ -62,7 +62,7 @@
 #include <rmr/RIC_message_types.h>
 #include "ricxfcpp/xapp.hpp"
 #include "ricxfcpp/config.hpp"
-
+#include <sstream>
 
 
 /*
@@ -651,58 +651,120 @@ void print_all_group(std::vector<UE> UE_Group, std::vector<Cell> Cell_Group, std
 
 
     float slice_utilization = 0;
-    std::cout << Slice_list.size() << " slice, " << "\n";
-    for(int s = 0 ; s < Slice_list.size(); s++){
-        std::cout << "\t" << Slice_list[s]<<"\n";
-    }
+   
+  
+    string outcome = "outcome_cell.csv";
 
-    std::cout << Cell_Group.size()<< "  cell, " << "\n";
+    ifstream fin(outcome.c_str(), std::ios::in);
+
+    stringstream buffer;
+    ofstream fout(outcome.c_str(), std::ios::out);
+
+
+    buffer << "Cell_Name" <<  "," << "Total_PRB" << "," ;
+    buffer << "slice_capacity_embb" << "," << "slice_capacity_urllc" << "," << "slice_capacity_mmtc" << "," ;
+    buffer << "slice_load_embb" << "," << "slice_load_urllc" << "," << "slice_load_mmtc" << "," ;
+    buffer << "slice_utilization_embb" << "," << "slice_utilization_urllc" << "," << "slice_utilization_mmtc" << "," ;
+
+    buffer << endl;
     for(int n=0;n<Cell_Group.size();n++){
-        std::cout <<"name: "<< Cell_Group[n].Name<<"\n";
-        std::cout << "x:" << Cell_Group[n].X << "\n";
-        std::cout << "y:" << Cell_Group[n].Y << "\n";
-        std::cout <<"Cell PRB: "<< Cell_Group[n].Cell_prb_avail<<"\n";
 
-        std::cout << "slice_capacity" << "(" <<Slice_list.size() << " slices" << ")"<< ":"  << "\n";
+        if(fin.good()){
+
+      
+            buffer << Cell_Group[n].Name << "," << Cell_Group[n].Cell_prb_avail << ",";
+ 
+        }  
+
         for (int s = 0 ; s < Slice_list.size(); s++){
         
-            std::cout << "\t" << Slice_list[s] << " : " << Cell_Group[n].Slice_capacity[Slice_list[s]] << "\n";
+            if(fin.good()){
 
+        
+                buffer << Cell_Group[n].Slice_capacity[Slice_list[s]] << "," ;
+            }  
         }
-        std::cout << "slice_load" << "(" <<Slice_list.size() << " slices" << ")"<< ":"  << "\n";
+       
         for (int s = 0 ; s < Slice_list.size(); s++){
             
-            std::cout << "\t" << Slice_list[s] << " : " << Cell_Group[n].Slice_load[Slice_list[s]] << "\n";
+        
+            if(fin.good()){
+
+        
+                buffer << Cell_Group[n].Slice_load[Slice_list[s]] << "," ;
+            }  
         }
 
-        std::cout << "slice_utilization" << "(" <<Slice_list.size() << " slices" << ")"<< ":"  << "\n";
         for (int s = 0 ; s < Slice_list.size(); s++){
             
-            std::cout << "\t" << Slice_list[s] << " : " <<  Cell_Group[n].Slice_utilization[Slice_list[s]]   << "\n";
+       
+            if(fin.good()){
+
+        
+                buffer << Cell_Group[n].Slice_utilization[Slice_list[s]]  << "," ;
+            }  
         }
+
+        if(fin.good()){
+
+            buffer << endl;
+    
+        } 
     }
 
-    std::cout << UE_Group.size() << "ue, " << "\n";
+
+    fout << buffer.rdbuf();
+
+
+    outcome = "outcome_ue.csv";
+
+    ifstream fin_ue(outcome.c_str(), std::ios::in);
+
+    stringstream buffer_ue;
+    ofstream fout_ue(outcome.c_str(), std::ios::out);
+
+
+
+    buffer_ue << "UE_Name" <<  "," << "Serving_Cell_Name" << "," ;
+    
+    buffer_ue << "slice_prb_used_embb" << "," << "slice_prb_used_urllc" << "," << "slice_prb_used_mmtc" << "," ; 
+
+    buffer_ue << endl;
 
     for(int k=0;k<UE_Group.size();k++){
-        std::cout <<"name:"<< UE_Group[k].Name <<"\n";
-        std::cout << "x:" << UE_Group[k].X << "\n";
-        std::cout << "y:" << UE_Group[k].Y << "\n";
-        std::cout <<"serv_cell:"<< UE_Group[k].Serv_cell <<"\n";
-        std::cout <<"nr_cell:"<<"\n";
-        for(int nr=0;nr<UE_Group[k].NR_cell.size();nr++){
-            std::cout << "\t" << UE_Group[k].NR_cell[nr]<<"\n";
-        
-        
+ 
 
-        
-        
+        if(fin_ue.good()){
+
+    
+            buffer_ue << UE_Group[k].Name  << "," <<  UE_Group[k].Serv_cell <<  ",";
+
+        } 
+
+        for(int i = 0 ; i < Slice_list.size() ; i++){
+            if(fin_ue.good()){
+                if(UE_Group[k].Slice_prb_req.find(Slice_list[i]) == UE_Group[k].Slice_prb_req.end()){
+                    buffer_ue << "," ;
+
+                }else{
+
+                    buffer_ue << UE_Group[k].Slice_prb_req[Slice_list[i]] << "," ;
+                }
+            }
         }
-        std::cout << "slice_prb_req:\n" ;
-        for(auto& x: UE_Group[k].Slice_prb_req)
-            std::cout << x.first << ":" << x.second << "\n";
 
+        if(fin_ue.good()){
+
+            buffer_ue << endl;
+        }
     }    
+
+    
+    buffer_ue << endl;
+
+    fout_ue << buffer_ue.rdbuf();
+
+
 }
 
 void uniform_random_slice_prb(int lower, int upper , unordered_map < string , int > &ue_slice_prb){
@@ -1789,111 +1851,28 @@ void prediction_callback( Message& mbuf, int mtype, int subid, int len, Msg_comp
 */
 mdclog_write(MDCLOG_INFO, "Prediction Callback got the message, start to query influxdb");
 
+      std::vector<UE> UE_Group;
+      std::vector<Cell> Cell_Group;
+      std::vector<std::string> Slice_list;    
 
-    std::vector<UE> UE_Group;
-    std::vector<Cell> Cell_Group;
-    std::vector<std::string> Slice_list;    
-
- 
-
-/* query influxdb test */
-
-#if 1 
-	/* Dummy test */ 
-	query_influxdb(UE_Group, Cell_Group, Slice_list);
-    //print_all_group(UE_Group, Cell_Group, Slice_list);
-
-#else
-	/* Not Dummy test */
-
-//----- Ken Create the Route for InfluxDB
-
-	//const auto point = 
-
-//-----------------------------------------
-
-std::vector<influxdb::Point> ue_data = db_influx->query("SELECT * FROM liveUE");
-std::vector<influxdb::Point> cell_data = db_influx->query("SELECT * FROM liveCell");
-
-vector< unordered_map<string, string> > ue_group ;
-vector< unordered_map<string, string> > cell_group ;
+  
+  
+  
+      /* Dummy test */ 
+      query_influxdb(UE_Group, Cell_Group, Slice_list);
+  
 
 
-std::vector<influxdb::Point> NRRRRR = db_influx->query("SELECT \"nrCellIdentity\"  FROM liveCell");
-std::vector<influxdb::Point> TEEEESSS = db_influx->query("SELECT \"string_field\"  FROM test");
-
-for(int i=0;i<NRRRRR.size();i++){
-	cout << "[Ken_Debug] NRRRRRRRRRRRRRRRRR: "  << NRRRRR[i].getFields() << "\n";
-	
-	for(int j=0;j<TEEEESSS.size();j++)
-		cout << "[Ken_Debug] valuevaluevalue: "  << TEEEESSS[j].getFields() << "\n";
-}
-for(int i=0;i<ue_data.size();i++){
-		get_influxdata(ue_data[i].getFields() , ue_group);
-		cout << "[Ken_Debug] UE Data: "  << ue_data[i].getFields() << "\n";
-/*
-		cout << "[Ken_Debug] : " << "ue-id : "     << ue_group[i]["ue-id"] << "\n";
-		cout << "[Ken_Debug] : " << "Serv_Cell : " << ue_group[i]["nrCellIdentity"]<< "\n";
-		cout << "[Ken_Debug] : " << "PRB_using : " << stoi(ue_group[i]["prb_usage"]) << "\n";
-		cout << "[Ken_Debug] : " << "NR_Cell 0 : " << ue_group[i]["nbCellIdentity_0"]<< "\n";
-		cout << "[Ken_Debug] : " << "NR_Cell 1 : " << ue_group[i]["nbCellIdentity_1"]<< "\n";
-		cout << "[Ken_Debug] : " << "NR_Cell 2 : " << ue_group[i]["nbCellIdentity_2"]<< "\n";
-		cout << "[Ken_Debug] : " << "NR_Cell 3 : " << ue_group[i]["nbCellIdentity_3"]<< "\n";
-		cout << "[Ken_Debug] : " << "NR_Cell 4 : " << ue_group[i]["nbCellIdentity_4"]<< "\n";
-
-*/
-
-}
-for(int i=0;i<cell_data.size();i++){
-		get_influxdata(cell_data[i].getFields() , cell_group);
-
-		cout << "[Ken_Debug] UE Data: "  << cell_data[i].getFields() << "\n";
-
-/*
-		cout << "[Ken_Debug] : " << "Cell Name : " << cell_group[i]["nrCellIdentity"] << "\n";
-		cout << "[Ken_Debug] : " << "Available PRB DL : " << stoi(cell_group[i]["availPrbDl"]) << "\n";
-*/
-
-}
-
-#endif
-
-
-/* Slice Allocation */
-
+      /* Slice Allocation */
 
 clock_t begin = clock();
-slice_allocation(UE_Group, Cell_Group, Slice_list);
+    slice_allocation(UE_Group, Cell_Group, Slice_list);
+
 clock_t end = clock();
-//print_all_group(UE_Group, Cell_Group, Slice_list);
+    print_all_group(UE_Group, Cell_Group, Slice_list);
 
-
- 
-/* Algorithm validation */
-
-/*
-  for(int i=0 ; i < UE_Group.size() ; i++){
-
-	  for(int j=0 ; j < UE_Group[i].NR_cell.size() ; j++){
-		  db_influx->write(influxdb::Point{"slice_usage"}
-		  .addTag("ue_group", UE_Group[i].Name)
-		  .addField("nr_cell_slice_usage", UE_Group[i].NR_cell[j]  )
-		  );
-  	  }
-	
-  }
-  for(int i=0 ; i < UE_Group.size() ; i++){
-
-	  db_influx->write(influxdb::Point{"handover_occupied_ue"}
-	  .addField(UE_Group[i].Name,  UE_Group[i].Serv_cell )
-	  );
-   }
-
-*/
-
-/* TODO:  Currently the slice prb is all the same ...  cause  the prb slice from ue group is all the same */
-
-
+    
+#if 1
     printf("******************************************************Calculate Aver BS utilization******************************************************\n");
 
     std::unordered_map<std::string,float> Aver_BS_utilization;
@@ -1914,31 +1893,7 @@ clock_t end = clock();
         }            
         Aver_BS.push_back(UE_Group[k].Serv_cell);    
 
-        
-        /*
-        for(int nr=0;nr<UE_Group[k].NR_cell.size();nr++){
-        
-            //std::cout << "\t" << "NR cell is :  " << UE_Group[k].NR_cell[nr] << " nr_cell_utilization: \n " ; 
 
-            for(auto& y: UE_Group[k].NR_Slice_utilization[nr]){
-                Aver_BS_utilization_temp = 0 ;
-                //auto ite_nr = Aver_BS.find(y.first);
-                
-                if(std::find(Aver_BS.begin(),Aver_BS.end(),y.first) == Aver_BS.end()){
-                    Aver_BS_utilization_temp +=     y.second;   
-                    //std::cout <<  "\t"   <<  "\t"   << UE_Group[k].NR_cell[nr] << ":" << y.second << "\n";    
-                    Aver_BS_utilization[UE_Group[k].NR_cell[nr]] += Aver_BS_utilization_temp*1/3; 
-                }
-                
-                Aver_BS.push_back(UE_Group[k].NR_cell[nr]); 
-                
-            }     
-
-        
-        
-        }
-        */
-        
         
         
     }
@@ -1949,7 +1904,7 @@ clock_t end = clock();
     for(const auto  it: Aver_BS_utilization){
         Tot_BS_utilization += it.second;
         it_cnt++;
-        std::cout  << it.first << ":" << it.second << "\n";    
+        //std::cout  << it.first << ":" << it.second << "\n";    
         
     } 
     
@@ -1970,7 +1925,7 @@ clock_t end = clock();
     printf("******************************************************aver BS utilization = %f******************************************************\n", Tot_BS_utilization/it_cnt);
     //printf("**************************************Counter = %d**************************************", it_cnt);
     printf("******************************************************elapsed    time     = %f******************************************************\n", (double)(end - begin) / CLOCKS_PER_SEC);
-
+#endif
 
 /* using the source code from offa InfluxDB C++ client library branch master */
 // write influxdb with a point
@@ -2205,3 +2160,4 @@ extern int main( int argc, char** argv ) {
   xfw->Run( nthreads );
 
 }
+

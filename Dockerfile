@@ -36,7 +36,7 @@ FROM nexus3.o-ran-sc.org:10002/o-ran-sc/bldr-ubuntu20-c-go:1.0.0 as buildenv
 # spaces to save things in the build image to copy to final image
 
 ###################influxdb dummy data 
-RUN mkdir -p /playpen/assets /playpen/src /playpen/bin /playpen/influxdb-dummy-data  
+RUN mkdir -p /playpen/assets /playpen/src /playpen/bin /playpen/dummy-data-input-output  
 ARG SRC=.
 
 WORKDIR /playpen
@@ -159,7 +159,7 @@ COPY assets/bootstrap.rt /playpen/assets
 
 #################Influxdb dummy data 
 #
-COPY influxdb-dummy-data/* /playpen/influxdb-dummy-data/
+COPY dummy-data-input-output/* /playpen/dummy-data-input-output/
 
 
 #
@@ -219,7 +219,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=buildenv /usr/local/lib /usr/local/lib/
 COPY --from=buildenv /usr/local/bin/rmr_probe /usr/local/bin/sla-spa /usr/local/bin/
 COPY --from=buildenv /playpen/bin /usr/local/bin/
-COPY --from=buildenv /playpen/assets /playpen/influxdb-dummy-data /data/
+COPY --from=buildenv /playpen/assets /playpen/dummy-data-input-output /data/
 
 
 ENV PATH=/usr/local/bin:$PATH
@@ -227,7 +227,7 @@ ENV LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib
 
 
 WORKDIR /data
-COPY --from=buildenv /playpen/assets/* /playpen/influxdb-dummy-data/* /data/
+COPY --from=buildenv /playpen/assets/* /playpen/dummy-data-input-output/* /data/
 
 # if needed, set RMR vars
 ENV RMR_SEED_RT=/data/bootstrap.rt
