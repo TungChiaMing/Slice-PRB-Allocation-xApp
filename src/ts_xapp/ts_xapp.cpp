@@ -79,15 +79,25 @@
 #include <grpcpp/security/credentials.h>
 #include "../../ext/protobuf/api.grpc.pb.h"
 
-//----- Ken Create the Route for InfluxDB
+//----------------------------------------------------------------------
+// Ken creates the Route for InfluxDB
+// Import InfluxDB Library, InfluxDBFactory
+// Using the source code from offa InfluxDB C++ client library
+//----------------------------------------------------------------------
 #include <InfluxDBFactory.h>
+
+//----------------------------------------------------------------------
+// Ken imports Import c++ std Library below
+//----------------------------------------------------------------------
 #include <math.h>
 #include <fstream>
 #include <random>
 #include <time.h>
 #include <chrono>
 
-//----- Ken Create the log
+//----------------------------------------------------------------------
+// Ken improts MDC Log Library
+//----------------------------------------------------------------------
 #include <mdclog/mdclog.h>
 
 
@@ -102,13 +112,12 @@ using DataMap = std::map<Key, Data>;
 using Keys = std::set<Key>;
 
 
-//----- Ken Create the Route for InfluxDB
-
+//----------------------------------------------------------------------
+// Ken assigns a variable to get the return address of influxdb
+//----------------------------------------------------------------------
 string influxdb_url = "http://ricplt-influxdb.ricplt:8086?db=UEData";
-/* using the source code from offa InfluxDB C++ client library branch master */
-// assign a variable to get the return address of influxdb
 auto db_influx = influxdb::InfluxDBFactory::Get(influxdb_url);
-// ----------------------------------------------------------
+
 std::unique_ptr<Xapp> xfw;
 std::unique_ptr<api::MsgComm::Stub> rc_stub;
 
@@ -394,47 +403,51 @@ struct AnomalyHandler : public BaseReaderHandler<UTF8<>, AnomalyHandler> {
   return return_ue_data_map;
 } */
 
-/*      ==================================================================================================================================================================================
-
-
-								                     							Slice Allocation Algorthim , Author : Ken Dong  
-
-        ==================================================================================================================================================================================                 */
+//----------------------------------------------------------------------
+// Ken defines state transition type for updating cell data 
+//----------------------------------------------------------------------
 typedef enum{
-        stay,
-        switch_to_nr,
-        handover_ue_k2
+    stay,
+    switch_to_nr,
+    handover_ue_k2
 }Updata_scenario;
-typedef enum{
-        embb,
-        mmtc,
-        urllc
-}Scenario;
 
+//----------------------------------------------------------------------
+// Ken defines Slice 
+//----------------------------------------------------------------------
+typedef enum{
+    embb,
+    mmtc,
+    urllc
+}Scenario;
 static unordered_map<string, Scenario> const Scenario_table = { {"embb", Scenario::embb} , {"mmtc", Scenario::mmtc} , {"urllc", Scenario::urllc} };
 
+
+//----------------------------------------------------------------------
+// Ken defines UE 
+//----------------------------------------------------------------------
 struct UE
 {
     std::string Name;
     int X;
     int Y;
-    std::string Serv_cell;
-    std::string HO_cell;
-    std::unordered_map<std::string, float> serv_slice_utilization ; 
-    std::vector<std::string> NR_cell;
+    std::string Serv_cell; // the cell currently serving a instance
+    std::string HO_cell; // the previous cell serves a instance
+    std::unordered_map<std::string, float> serv_slice_utilization ; // (A Slice PRB/Total PRB) of the cell currently serving a instance
+    std::vector<std::string> NR_cell; // neighbor cells of a instance 
     
-    std::vector< std::unordered_map<std::string, float>> NR_Slice_utilization;
+    // (A Slice PRB/Total PRB) of the neighbors cell currently serving the instance
+    std::vector< std::unordered_map<std::string, float>> NR_Slice_utilization; 
 
-    std::unordered_map< std::string , int> Slice_prb_req; //demand slice & rs, data rate ue require
-    std::unordered_map< std::string , int> Slice_prb_used;
+    std::unordered_map< std::string , int> Slice_prb_req; // Demanded Slice PRB a instance require to a cell
+    std::unordered_map< std::string , int> Slice_prb_used; // Slice PRB a instance use in a cell
 
-    std::vector<std::string> Slice_req;
-    std::vector<std::string> Slice_used;
+    std::vector<std::string> Slice_req; // Demanded Slice PRB a instance require
+    std::vector<std::string> Slice_used; // Slice PRB a instance use
   
     UE(){};
     UE(std::string name, std::string serv_cell, std::vector<std::string> nr_cell) {
         Name = name;
- 
         Serv_cell = serv_cell;
         NR_cell = nr_cell;
     }
@@ -454,19 +467,21 @@ struct UE
         return Slice_used;
     }
 };
+
+//----------------------------------------------------------------------
+// Ken defines Cell 
+//----------------------------------------------------------------------
 struct Cell{
     std::string Name;
     int X;
     int Y;
-    int Cell_prb_avail;    //all prb (all slices) (max)
-    std::unordered_map< std::string , int> Slice_prb_avail; // total prb a cell own
+    int Cell_prb_avail;    // Total PRB a instance can provide
     
-    // prb_avail  /  
-    std::unordered_map<std::string, int> Slice_capacity ; // Remaining prb can provide to ue 
-    std::unordered_map<std::string, int> Slice_load ;      // fs,n , per slice prb used in a cell
-    std::unordered_map<std::string, float> Slice_utilization ;  // us,n , per slice prb used / all slice prb (max)   60/91 = 3
-
-    // Unknow to distinguish different slice or not ?
+    std::unordered_map< std::string , int> Slice_prb_avail; // Total Slice PRB a instance can provide 
+    std::unordered_map<std::string, int> Slice_capacity ; // Slice PRB a instance can provide
+    std::unordered_map<std::string, int> Slice_load ;      // Slice PRB a instance have been used
+    std::unordered_map<std::string, float> Slice_utilization ;  // Slice_load / Slice_prb_avail 
+ 
     float throughput;
     Cell(){}
     Cell(std::string name, int cell_prb_avail) {
@@ -477,27 +492,22 @@ struct Cell{
     }
 };
 
-
+//----------------------------------------------------------------------
+// Ken declares function
+//----------------------------------------------------------------------
 void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vector <unordered_map<string , string>> &cell_map_group);
 void get_influxdata(string data ,vector< unordered_map<string, string> > &data_group);
 void query_influxdb( std::vector<UE> &UE_Group, std::vector<Cell> &Cell_Group, std::vector<std::string> &Slice_list);
 void slice_allocation(std::vector<UE> &ue_list, std::vector<Cell> &cell_list, std::vector<std::string> &slice_list);
 void handover_ue(int &ue_k_key,UE &ue_k, std::vector<UE> &ue_list, std::vector<Cell> &cell_list, std::vector<std::string> &slice_list, Updata_scenario update);
-void update_load(std::vector<UE> &ue_list, std::vector<Cell> &cell_list, std::vector<std::string> &slice_list);
+//void update_load(std::vector<UE> &ue_list, std::vector<Cell> &cell_list, std::vector<std::string> &slice_list);
 void update_load_b(UE &ue_k, Cell &new_bs, std::vector<std::string> &slice_list, std::unordered_map <std::string, int> &slice_provide_map, Updata_scenario update);
 void print_all_group(std::vector<UE> UE_Group, std::vector<Cell> Cell_Group, std::vector<std::string> Slice_list);
 void uniform_random_slice_prb(int lower, int upper , unordered_map < string , int > &ue_slice_prb);
 vector<string> slice_parser(string ue_slice);
 
 
-
-/*      ==================================================================================================================================================================================
-
-
-								                     							Slice Allocation Algorthim , Author : Ken Dong  
-
-        ==================================================================================================================================================================================                 */
-
+ 
 
 void policy_callback( Message& mbuf, int mtype, int subid, int len, Msg_component payload,  void* data ) {
 
@@ -639,24 +649,20 @@ ctrlMsg->set_targetcellid("c2B13");
   // FIXME needs to check about memory likeage
 }
 
-/*      ==================================================================================================================================================================================
-
-
-								                     							Slice Allocation Algorthim , Author : Ken Dong  
-
-        ==================================================================================================================================================================================                 */
-
-
+ 
+//----------------------------------------------------------------------
+// Ken defines function , print_all_group
+// output the outcome of data structure of UE and Cell 
+// to the file , "outcome_cell.csv" and "outcome_ue.csv"
+// after slice allocation
+//----------------------------------------------------------------------
 void print_all_group(std::vector<UE> UE_Group, std::vector<Cell> Cell_Group, std::vector<std::string> Slice_list){
 
 
     float slice_utilization = 0;
-   
-  
     string outcome = "outcome_cell.csv";
 
     ifstream fin(outcome.c_str(), std::ios::in);
-
     stringstream buffer;
     ofstream fout(outcome.c_str(), std::ios::out);
 
@@ -665,132 +671,111 @@ void print_all_group(std::vector<UE> UE_Group, std::vector<Cell> Cell_Group, std
     buffer << "slice_capacity_embb" << "," << "slice_capacity_urllc" << "," << "slice_capacity_mmtc" << "," ;
     buffer << "slice_load_embb" << "," << "slice_load_urllc" << "," << "slice_load_mmtc" << "," ;
     buffer << "slice_utilization_embb" << "," << "slice_utilization_urllc" << "," << "slice_utilization_mmtc" << "," ;
-
     buffer << endl;
+
+
     for(int n=0;n<Cell_Group.size();n++){
-
         if(fin.good()){
-
-      
             buffer << Cell_Group[n].Name << "," << Cell_Group[n].Cell_prb_avail << ",";
- 
         }  
 
         for (int s = 0 ; s < Slice_list.size(); s++){
-        
             if(fin.good()){
-
-        
                 buffer << Cell_Group[n].Slice_capacity[Slice_list[s]] << "," ;
             }  
         }
        
         for (int s = 0 ; s < Slice_list.size(); s++){
-            
-        
             if(fin.good()){
-
-        
                 buffer << Cell_Group[n].Slice_load[Slice_list[s]] << "," ;
             }  
         }
 
         for (int s = 0 ; s < Slice_list.size(); s++){
-            
-       
             if(fin.good()){
-
-        
                 buffer << Cell_Group[n].Slice_utilization[Slice_list[s]]  << "," ;
             }  
         }
 
         if(fin.good()){
-
             buffer << endl;
-    
         } 
     }
 
 
     fout << buffer.rdbuf();
 
-
     outcome = "outcome_ue.csv";
-
     ifstream fin_ue(outcome.c_str(), std::ios::in);
-
     stringstream buffer_ue;
     ofstream fout_ue(outcome.c_str(), std::ios::out);
 
 
 
     buffer_ue << "UE_Name" <<  "," << "Serving_Cell_Name" << "," ;
-    
     buffer_ue << "slice_prb_used_embb" << "," << "slice_prb_used_urllc" << "," << "slice_prb_used_mmtc" << "," ; 
-
     buffer_ue << endl;
 
     for(int k=0;k<UE_Group.size();k++){
- 
-
         if(fin_ue.good()){
-
-    
             buffer_ue << UE_Group[k].Name  << "," <<  UE_Group[k].Serv_cell <<  ",";
-
         } 
-
         for(int i = 0 ; i < Slice_list.size() ; i++){
             if(fin_ue.good()){
                 if(UE_Group[k].Slice_prb_req.find(Slice_list[i]) == UE_Group[k].Slice_prb_req.end()){
                     buffer_ue << "," ;
-
                 }else{
-
                     buffer_ue << UE_Group[k].Slice_prb_req[Slice_list[i]] << "," ;
                 }
             }
         }
-
         if(fin_ue.good()){
-
             buffer_ue << endl;
         }
     }    
 
     
     buffer_ue << endl;
-
     fout_ue << buffer_ue.rdbuf();
-
-
 }
-
+//----------------------------------------------------------------------
+// Ken defines function , uniform_random_slice_prb
+// responsible for uniformly random the slice PRB to the slice the UE is using
+// here we have three slices ,  embb , mmtc , urllc
+// note: the sum of all the slice PRB will be total PRB
+//----------------------------------------------------------------------
 void uniform_random_slice_prb(int lower, int upper , unordered_map < string , int > &ue_slice_prb){
- 
+    // get the rand num
     std::default_random_engine rand_num{static_cast<long unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count())};
     uniform_int_distribution<> dist(lower,upper); 
     vector<int> random_num ;  
     for (int i = 0; i < ue_slice_prb.size(); ++i) {
         random_num.push_back(dist(rand_num)) ; // pass the generator to the distribution.
     }
+
+    
     int random_num_sum = 0;
     for(int i =0 ; i < random_num.size();i++){
         //cout << "[Debug] random is " << random_num[i] << "\n";
         random_num_sum += random_num[i] ;
     }
-    float random_num_scaler =   (float)upper/random_num_sum ; 
-    int temp_min = 999; 
-    random_num_sum=0;
-    string min_prb_slice = "";
+    float random_num_scaler =   (float)upper/random_num_sum ;  // scale to the slice prb ue request
+    int temp_min = 999; // use INT_MAX shall be better
+    random_num_sum=0; 
+
+    // define the mininum slice prb randomly generated 
+    // after distribute the slice prb
+    // the sum of distributed slice prb == slice prb ue request - 1
+    // so distribute one prb to the mininum slice (may have better way)
+    string min_prb_slice = ""; 
     int random_num_index = -1 ;
+
+
+    // distribute the slice prb to the ue request
     for(const auto&s : ue_slice_prb){
         string ueslice = s.first;
-
         auto iter = Scenario_table.find(ueslice);
         random_num_index++;
-
         if(iter != Scenario_table.end() ){
             switch (iter->second)
             {
@@ -806,47 +791,54 @@ void uniform_random_slice_prb(int lower, int upper , unordered_map < string , in
             default:
                 break;
             }
-
-
-
         }else{
             ue_slice_prb["other_slice"] = random_num[random_num_index]*random_num_scaler ;
         }
- 
+
+        // find the slice have the mininum prb
+        // distribute one prb to it
         random_num_sum += s.second ;
         if(temp_min > s.second){
             temp_min = s.second;
             min_prb_slice = s.first;
         }
     }
-    ue_slice_prb[min_prb_slice] += upper-random_num_sum;
-
+    ue_slice_prb[min_prb_slice] += upper-random_num_sum; // one prb
 }
 
-
+//----------------------------------------------------------------------
+// Ken defines function , slice_parser
+// before read the dummy data, we need to assign UE which kind of slices will use  as string 
+// and parse it into how many slice the UE use and which kind of slice the UE use
+//----------------------------------------------------------------------
 vector<string> slice_parser(string ue_slice){
+
+    // the string we read from the file 
+    // will be like 
+    // slice1_slice2_slice3 ...
+    // we need to the where   icon "_" is to divide the string
     int icon_position = 0;
     vector<string> ue_slices;         
     string ue_slice_temp;               
     for(int s = 0 ; s < ue_slice.length()+1 ; s++){
         if('_' == ue_slice[s] or ue_slice[s] == '\0'){
-            
-     
             for(int ss = icon_position ; ss<  s; ss++){
-                
                 ue_slice_temp +=  ue_slice[ss];
-                
             }
-            
             ue_slices.push_back(ue_slice_temp);
             ue_slice_temp = "";
             icon_position = s+1; 
         }
     }
-
     return ue_slices;
-
 }
+
+//----------------------------------------------------------------------
+// Ken defines function , get_dummy_data
+// read the data store in "valid.csv" and "MeasReport_cell.csv"
+// File_length is fixed
+// TODO : how to read any csv without knowing its row length
+//----------------------------------------------------------------------
 void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vector <unordered_map<string , string>> &cell_map_group){
     ifstream ueFile;
     ueFile.open("valid.csv");
@@ -862,11 +854,8 @@ void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vecto
     
     
     unordered_map<string , string> data_map;
-   
-
     string header_string_temp;
     vector <string> header_string ;
-
     string mesg_string_temp;
     vector <string> mesg_string ;
 
@@ -878,14 +867,11 @@ void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vecto
         }
         if(a == 1){
            header   =  line; 
-          
             for(int s = 0 ; s < header.length()+1 ; s++){
                 if(',' == header[s] or header[s] == '\0'){
                     for(int ss = icon_position ; ss<  s ; ss++){
-                        
                         header_string_temp +=  header[ss];
                     }
-                    
                     header_string.push_back(header_string_temp);
                     header_string_temp = "";
                     icon_position = s+1; 
@@ -894,43 +880,28 @@ void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vecto
         }else{
             mesg = line ; 
             //cout << mesg << "\n";
-
             mesg_string_temp = "" ; 
-
             mesg_string.clear();
- 
-                          icon_position = 0 ;
-                        for(int s = 0 ; s < mesg.length()+1 ; s++){
-                            if(',' == mesg[s] or mesg[s] == '\0'){
-                                
-                        
-                                for(int ss = icon_position ; ss<  s ; ss++){
-                                    
-                                    mesg_string_temp +=  mesg[ss];
-                                    
-                                }
-                                  
-
-                                mesg_string.push_back(mesg_string_temp);
-                                mesg_string_temp = "";
-                                icon_position = s+1; 
-                            }
-                        }
-
-
+            icon_position = 0 ;
+            for(int s = 0 ; s < mesg.length()+1 ; s++){
+                if(',' == mesg[s] or mesg[s] == '\0'){
+                    for(int ss = icon_position ; ss<  s ; ss++){
+                        mesg_string_temp +=  mesg[ss];
+                    }
+                    mesg_string.push_back(mesg_string_temp);
+                    mesg_string_temp = "";
+                    icon_position = s+1; 
+                }
+            }
             for(int h = 0 ; h < header_string.size();h++){
                 data_map[header_string[h]] =  mesg_string[h];
                 //cout << "h is :" << h << "data is : "<< header_string[h] <<  " : " <<  data_map[header_string[h]] << "\n";
-               
                 //cout << header_string[a]<< "\n";
             }
            // cout <<  "outside  h is : " << h << "\n" ;
-
             ue_map_group.push_back(data_map);
             data_map.clear();
         }
-       
-
     }
     ueFile.close();
 
@@ -958,7 +929,6 @@ void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vecto
     icon_position = 0;
 
     while (getline(cellFile, line)) {
-
       a++;
         if(a == File_length){
             break ;
@@ -969,10 +939,8 @@ void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vecto
             for(int s = 0 ; s < header.length()+1 ; s++){
                 if(',' == header[s] or header[s] == '\0'){
                     for(int ss = icon_position ; ss<  s ; ss++){
-                        
                         header_string_temp +=  header[ss];
                     }
-                    
                     header_string.push_back(header_string_temp);
                     header_string_temp = "";
                     icon_position = s+1; 
@@ -981,65 +949,50 @@ void get_dummy_data(vector <unordered_map<string , string>> &ue_map_group, vecto
         }else{
             mesg = line ; 
             //cout << mesg << "\n";
-
             mesg_string_temp = "" ; 
-
             mesg_string.clear();
- 
-                          icon_position = 0 ;
-                        for(int s = 0 ; s < mesg.length()+1 ; s++){
-                            if(',' == mesg[s] or mesg[s] == '\0'){
-                                
-                        
-                                for(int ss = icon_position ; ss<  s ; ss++){
-                                    
-                                    mesg_string_temp +=  mesg[ss];
-                                    
-                                }
-                                  
-
-                                mesg_string.push_back(mesg_string_temp);
-                                mesg_string_temp = "";
-                                icon_position = s+1; 
-                            }
-                        }
-
-
+            icon_position = 0 ;
+            for(int s = 0 ; s < mesg.length()+1 ; s++){
+                if(',' == mesg[s] or mesg[s] == '\0'){
+                    for(int ss = icon_position ; ss<  s ; ss++){ 
+                        mesg_string_temp +=  mesg[ss];  
+                    }
+                    mesg_string.push_back(mesg_string_temp);
+                    mesg_string_temp = "";
+                    icon_position = s+1; 
+                }
+            }
             for(int h = 0 ; h < header_string.size();h++){
                 data_map[header_string[h]] =  mesg_string[h];
                 //cout << "h is :" << h << "data is : "<< header_string[h] <<  " : " <<  data_map[header_string[h]] << "\n";
-               
                 //cout << header_string[a]<< "\n";
             }
            // cout <<  "outside  h is : " << h << "\n" ;
-
             cell_map_group.push_back(data_map);
             data_map.clear();
         }
-
     }
 }
-
-/* this function will not be used  since we didn't use run time data */
-	
+ 
+//----------------------------------------------------------------------
+// Ken defines function , get_influxdata
+// this function will not be used  since we didn't use run time data
+// just defined here , it's not used currently
+// TODO : get real time data from influxDB
+//----------------------------------------------------------------------	
 void get_influxdata(string data ,vector< unordered_map<string, string> > &data_group){
 
     unordered_map<string , string> data_map;
     string data_string_temp;
     vector<string> data_string;
     int icon_position = 0;
-     
+
      
      for(int s = 0 ; s < data.length()+1 ; s++){
         if(',' == data[s] or data[s] == '\0'){
-            
-     
             for(int ss = icon_position ; ss<  s ; ss++){
-                
                 data_string_temp +=  data[ss];
-                
             }
-            
             data_string.push_back(data_string_temp);
             data_string_temp = "";
             icon_position = s+1; 
@@ -1052,7 +1005,6 @@ void get_influxdata(string data ,vector< unordered_map<string, string> > &data_g
             if( data_string[i][j] == '=' ){
                 string key ;
                 string value;
-
                 icon_position = j ;
                 for(int k = 0; k < icon_position ; k++)
                     key += data_string[i][k];
@@ -1065,21 +1017,18 @@ void get_influxdata(string data ,vector< unordered_map<string, string> > &data_g
             }
         }
     }
-
-
-
 	data_group.push_back(data_map);
-
-
 }
 
-/* current, this function will use dummy data set */
+ 
+//----------------------------------------------------------------------
+// Ken defines function , query_influxdb
+// current, this function will use dummy data set
+// get the data , and store it to the struct defined in UE & Cell
+// TODO : get real time data from influxDB
+//----------------------------------------------------------------------	
 void query_influxdb( std::vector<UE> &UE_Group, std::vector<Cell> &Cell_Group, std::vector<std::string> &Slice_list){
         
-
-    
-
-
 
     // Initialize cell support slice
     Slice_list.push_back("embb");
@@ -1089,8 +1038,7 @@ void query_influxdb( std::vector<UE> &UE_Group, std::vector<Cell> &Cell_Group, s
 
 
 
-    // Get influxdata
-
+    // Get dummy data , and store it
     vector< unordered_map<string, string> > ue_group ;
     vector< unordered_map<string, string> > cell_group ;
 
@@ -1098,53 +1046,53 @@ void query_influxdb( std::vector<UE> &UE_Group, std::vector<Cell> &Cell_Group, s
     
   
 
-
+    // debug retrieve data
     //string test_string  = "ue-id=Pedenstrian-1,nrCellIdentity=N87,prb_usage=55,nbCellIdentity_0=C13,nbCellIdentity_1=C12,nbCellIdentity_2=B12,nbCellIdentity_3=A11,nbCellIdentity_4=X22";
     //test_string_vector.push_back(test_string);
 
-    /* Print UE Information */
+    // Print UE Information 
     for(int i=0;i<ue_group.size();i++){
-            //get_influxdata(ue_data[i].getFields() , ue_group);
-            //get_influxdata(test_string_vector[i] , ue_group);
+        //get_influxdata(ue_data[i].getFields() , ue_group);
+        //get_influxdata(test_string_vector[i] , ue_group);
 
-            // avoid stoi error
-            
-            if(ue_group[i]["prb_usage"] == ""){
-                ue_group[i]["prb_usage"] = "0";
-            }
-			/*
-            cout << "[Ken_Debug] : " << "ue-id : "     << ue_group[i]["ue-id"] << "\n";
-            cout << "[Ken_Debug] : " << "Serv_Cell : " << ue_group[i]["nrCellIdentity"]<< "\n";
-            cout << "[Ken_Debug] : " << "PRB_using : " << stoi(ue_group[i]["prb_usage"]) << "\n";
-            cout << "[Ken_Debug] : " << "NR_Cell 0 : " << ue_group[i]["nbCellIdentity_0"]<< "\n";
-            cout << "[Ken_Debug] : " << "NR_Cell 1 : " << ue_group[i]["nbCellIdentity_1"]<< "\n";
-            cout << "[Ken_Debug] : " << "NR_Cell 2 : " << ue_group[i]["nbCellIdentity_2"]<< "\n";
-            cout << "[Ken_Debug] : " << "NR_Cell 3 : " << ue_group[i]["nbCellIdentity_3"]<< "\n";
-            cout << "[Ken_Debug] : " << "NR_Cell 4 : " << ue_group[i]["nbCellIdentity_4"]<< "\n";
-            cout << "[Ken_Debug] : " << "Slices : " << ue_group[i]["Slices"]<< "\n";
-			*/
-mdclog_write(MDCLOG_INFO, "UE Info:  ue-id=%s , Serv_Cell=%s, PRB_using= %d, NR_Cell_0=%s, NR_Cell_1=%s, NR_Cell_2=%s, NR_Cell_3=%s, NR_Cell_4=%s, Slices=%s", 
-ue_group[i]["ue-id"].c_str(), ue_group[i]["nrCellIdentity"].c_str(), stoi(ue_group[i]["prb_usage"]), ue_group[i]["nbCellIdentity_0"].c_str(), ue_group[i]["nbCellIdentity_1"].c_str(),
-ue_group[i]["nbCellIdentity_2"].c_str(), ue_group[i]["nbCellIdentity_3"].c_str(), ue_group[i]["nbCellIdentity_4"].c_str(), ue_group[i]["Slices"].c_str());
+        // avoid stoi error
+        if(ue_group[i]["prb_usage"] == ""){
+            ue_group[i]["prb_usage"] = "0";
+        }
+        // debug retrieve data
+        //
+        //      cout << "[Ken_Debug] : " << "ue-id : "     << ue_group[i]["ue-id"] << "\n";
+        //      cout << "[Ken_Debug] : " << "Serv_Cell : " << ue_group[i]["nrCellIdentity"]<< "\n";
+        //      cout << "[Ken_Debug] : " << "PRB_using : " << stoi(ue_group[i]["prb_usage"]) << "\n";
+        //      cout << "[Ken_Debug] : " << "NR_Cell 0 : " << ue_group[i]["nbCellIdentity_0"]<< "\n";
+        //      cout << "[Ken_Debug] : " << "NR_Cell 1 : " << ue_group[i]["nbCellIdentity_1"]<< "\n";
+        //      cout << "[Ken_Debug] : " << "NR_Cell 2 : " << ue_group[i]["nbCellIdentity_2"]<< "\n";
+        //      cout << "[Ken_Debug] : " << "NR_Cell 3 : " << ue_group[i]["nbCellIdentity_3"]<< "\n";
+        //      cout << "[Ken_Debug] : " << "NR_Cell 4 : " << ue_group[i]["nbCellIdentity_4"]<< "\n";
+        //      cout << "[Ken_Debug] : " << "Slices : " << ue_group[i]["Slices"]<< "\n";
+        //
+        mdclog_write(MDCLOG_INFO, "UE Info:  ue-id=%s , Serv_Cell=%s, PRB_using= %d, NR_Cell_0=%s, NR_Cell_1=%s, NR_Cell_2=%s, NR_Cell_3=%s, NR_Cell_4=%s, Slices=%s", 
+        ue_group[i]["ue-id"].c_str(), ue_group[i]["nrCellIdentity"].c_str(), stoi(ue_group[i]["prb_usage"]), ue_group[i]["nbCellIdentity_0"].c_str(), ue_group[i]["nbCellIdentity_1"].c_str(),
+        ue_group[i]["nbCellIdentity_2"].c_str(), ue_group[i]["nbCellIdentity_3"].c_str(), ue_group[i]["nbCellIdentity_4"].c_str(), ue_group[i]["Slices"].c_str());
     }
 
-
+    // debug retrieve data
     //test_string = "nrCellIdentity=N87,availPrbDl=122";
     for(int i=0;i<cell_group.size();i++){
-            //get_influxdata(cell_data[i].getFields() , cell_group);
-            //get_influxdata(test_string_vector[i] , cell_group);
+        //get_influxdata(cell_data[i].getFields() , cell_group);
+        //get_influxdata(test_string_vector[i] , cell_group);
 
 
-            // avoid stoi error
-            if(cell_group[i]["availPrbDl"] == ""){
-                cell_group[i]["availPrbDl"] = "0";
-            }
+        // avoid stoi error
+        if(cell_group[i]["availPrbDl"] == ""){
+            cell_group[i]["availPrbDl"] = "0";
+        }
+        // debug retrieve data
+        //cout << "[Ken_Debug] : " << "Cell Name : " << cell_group[i]["nrCellIdentity"] << "\n";
+        //cout << "[Ken_Debug] : " << "Available PRB DL : " << stoi(cell_group[i]["availPrbDl"]) << "\n";
 
-            //cout << "[Ken_Debug] : " << "Cell Name : " << cell_group[i]["nrCellIdentity"] << "\n";
-            //cout << "[Ken_Debug] : " << "Available PRB DL : " << stoi(cell_group[i]["availPrbDl"]) << "\n";
 
-
-mdclog_write(MDCLOG_INFO,"Cell Info:  Cell_Name=%s , Available_PRB_DL=%d", cell_group[i]["nrCellIdentity"].c_str(), stoi(cell_group[i]["availPrbDl"]) );
+        mdclog_write(MDCLOG_INFO,"Cell Info:  Cell_Name=%s , Available_PRB_DL=%d", cell_group[i]["nrCellIdentity"].c_str(), stoi(cell_group[i]["availPrbDl"]) );
     }
 
 
@@ -1172,9 +1120,11 @@ mdclog_write(MDCLOG_INFO,"Cell Info:  Cell_Name=%s , Available_PRB_DL=%d", cell_
 
 
 
-mdclog_write(MDCLOG_INFO,"Start Init Cell Slice PRB");
+    mdclog_write(MDCLOG_INFO,"Start Init Cell Slice PRB");
 
-    /* TODO cell may not support every slice but RIC Test now support all in default */
+
+    // store Cell from  dummy data got before   
+    // TODO: cell may not support every slice but RIC Test now support all in default 
     for(int n = 0 ; n < Cell_Group.size(); n++){
         for (int s = 0 ; s < Slice_list.size(); s++){
 
@@ -1183,7 +1133,7 @@ mdclog_write(MDCLOG_INFO,"Start Init Cell Slice PRB");
             //std::cout  << Cell_Group[n].Slice_prb_avail[Slice_list[s]] << "\n"; 
 
 
-mdclog_write(MDCLOG_INFO,"Cell_Name=%s , Slice=%s , Slice_PRB=%d", Cell_Group[n].Name.c_str(), Slice_list[s].c_str(), Cell_Group[n].Slice_prb_avail[Slice_list[s]] );
+            mdclog_write(MDCLOG_INFO,"Cell_Name=%s , Slice=%s , Slice_PRB=%d", Cell_Group[n].Name.c_str(), Slice_list[s].c_str(), Cell_Group[n].Slice_prb_avail[Slice_list[s]] );
  
             Cell_Group[n].Slice_capacity[Slice_list[s]] =  Cell_Group[n].Cell_prb_avail/Slice_size;//bn,s Remaining slice prb can provide to ue
             Cell_Group[n].Slice_load[Slice_list[s]] = 0;  // current slice prb provide users 
@@ -1195,6 +1145,7 @@ mdclog_write(MDCLOG_INFO,"Cell_Name=%s , Slice=%s , Slice_PRB=%d", Cell_Group[n]
     std::vector<std::string> nrcell_temp;  // coverage
 
 
+    // store Cell from  dummy data got before   
     for(int i = 0 ; i< ue_group.size() ; i++){
         nrcell_temp.push_back(ue_group[i]["nbCellIdentity_0"]);
         nrcell_temp.push_back(ue_group[i]["nbCellIdentity_1"]);
@@ -1219,14 +1170,14 @@ mdclog_write(MDCLOG_INFO,"Cell_Name=%s , Slice=%s , Slice_PRB=%d", Cell_Group[n]
     }
 
 
-mdclog_write(MDCLOG_INFO,"Start Init UE Slice PRB");
+    mdclog_write(MDCLOG_INFO,"Start Init UE Slice PRB");
 
 
-    /* Print UE Information */
+    //Print UE Information 
     
     for(int i=0;i<ue_group.size();i++){
 
-mdclog_write(MDCLOG_INFO,"ue-id=%s , PRB_using=%d", ue_group[i]["ue-id"].c_str(), stoi(ue_group[i]["prb_usage"]) );
+        mdclog_write(MDCLOG_INFO,"ue-id=%s , PRB_using=%d", ue_group[i]["ue-id"].c_str(), stoi(ue_group[i]["prb_usage"]) );
     }
 
     for(int i=0;i<UE_Group.size();i++){
@@ -1242,41 +1193,48 @@ mdclog_write(MDCLOG_INFO,"ue-id=%s , PRB_using=%d", ue_group[i]["ue-id"].c_str()
 
 }
        
-/* 
+//----------------------------------------------------------------------
+// Ken defines function , slice_allocation
+// code flow chart is depicted here https://hackmd.io/NvYiLkJ9SvONbUWnis2RbQ?view#Slice-Allocation
+// It only accept the three argument below
+// 1. std::vector<UE> ue_list, 
+// 2. std::vector<Cell> cell_list, 
+// 3. std::vector<std::string> slice_list
 
-It only accept the three argument below
-1. std::vector<UE> ue_list, 
-2. std::vector<Cell> cell_list, 
-3. std::vector<std::string> slice_list
+// struct UE and struct Cell has already defined in the ts_xapp.cpp
 
-struct UE and struct Cell has already defined in the ts_xapp.cpp
+// For now, slice list only accept three slice , 
+// respectively , embb , mmtc , urllc
 
-For now, slice list only accept three slice , respectively , embb , mmtc , urllc
-
-declear the vector variable of UE and Cell , and then read your dummy data to use it!
-
-*/
+// declear the vector variable of UE and Cell , 
+// and then read your dummy data to use it!
+//----------------------------------------------------------------------	
 
 void slice_allocation(std::vector<UE> &ue_list, std::vector<Cell> &cell_list, std::vector<std::string> &slice_list){
     // do slice allocation
 
     Updata_scenario updata_scenario;
+
+    // iterate all the ue
     for(int k = 0 ; k < ue_list.size() ; k++){
 
         
 
-mdclog_write(MDCLOG_INFO,"Start Slice PRB Allocation Algorithm" );
+        mdclog_write(MDCLOG_INFO,"Start Slice PRB Allocation Algorithm" );
 
-mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_list[k].Name.c_str() );
+        mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_list[k].Name.c_str() );
 
       
         //std::cout << "[Debug] operating ue : " << ue_list[k].Name << "\n";
 
-      
+        // distribute ue to a cell
         handover_ue(k, ue_list[k], ue_list, cell_list, slice_list, updata_scenario);    
       
+
+
+        // update neighbor cells slice utilization
         ue_list[k].NR_Slice_utilization.resize(5);
-#if 1
+
         for(int ue_nr=0 ; ue_nr < ue_list[k].NR_cell.size() ; ue_nr++){
                 
             for(int c = 0 ; c < cell_list.size() ; c++){
@@ -1296,45 +1254,57 @@ mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_list[k].Name.c_str() );
             }
         }
 
-mdclog_write(MDCLOG_INFO,"Complete Slice PRB Allocation Algorithm" );
+        mdclog_write(MDCLOG_INFO,"Complete Slice PRB Allocation Algorithm" );
 
-mdclog_write(MDCLOG_INFO,"Update the InfluxDB..." );
+        mdclog_write(MDCLOG_INFO,"Update the InfluxDB..." );
 
-#else
-#endif 
+
      
     }
 }
+
+//----------------------------------------------------------------------
+// Ken defines function , handover_ue
+// distribute ue to a cell 
+// according to three condition
+// 1. if serving cell can provide slices prb to ue ?
+// 2. else if does neighbor cells exist ?
+// 3. else handover another ue occupy the most resources to other cell
+//----------------------------------------------------------------------	
 void handover_ue(int &ue_k_key,UE &ue_k, std::vector<UE> &ue_list, std::vector<Cell> &cell_list, std::vector<std::string> &slice_list, Updata_scenario update){
     // check any requested slices by UE k is full
     bool slice_full  = false;
   
-    int new_bs_key;
-    int ue_k_bs_key; 
+    int new_bs_key; // index of the cell will severs ue after going through the function
+    int ue_k_bs_key; // index of the  serving cell
     vector<string> ue_k_slice_name ;
-    // check if serving cell can provide service
+    // get index of the  serving cell
     for(int n = 0; n<cell_list.size();n++){
         if(cell_list[n].Name==ue_k.Serv_cell){
             ue_k_bs_key =n ;    
         }
     } 
 
-
-mdclog_write(MDCLOG_DEBUG,"Current Serving Cell is %s  Cell Total PRB is %d", ue_k.Serv_cell.c_str() , (cell_list[ue_k_bs_key].Slice_capacity["embb"])*3);
+    // for a cell , each cell have three slice , and each slice is evenly distributed total prb
+    // just slice embb * 3 
+    mdclog_write(MDCLOG_DEBUG,"Current Serving Cell is %s  Cell Total PRB is %d", ue_k.Serv_cell.c_str() , (cell_list[ue_k_bs_key].Slice_capacity["embb"])*3);
 
     //std::cout << "[Debug] Serv cell is :" << ue_k.Serv_cell << "\n" ; 
 
  
-	//std::cout << "[Debug] Serv cell prb is  :" << cell_list[ue_k_bs_key].Slice_capacity["embb"] << "\n"; 
+  	//std::cout << "[Debug] Serv cell prb is  :" << cell_list[ue_k_bs_key].Slice_capacity["embb"] << "\n"; 
     
+
+
+  // check if serving cell can provide all the ue requested slice prb
 	for(const auto&s : ue_k.Slice_prb_req){
         ue_k_slice_name.push_back(s.first);
         //std::cout << "[Debug] ue_k slice prb req :"<< s.first << ","<< s.second << "\n" ; 
 
-mdclog_write(MDCLOG_DEBUG,"slice prb req is %s %d", s.first.c_str(), s.second );
+        mdclog_write(MDCLOG_DEBUG,"slice prb req is %s %d", s.first.c_str(), s.second );
 
 
-mdclog_write(MDCLOG_DEBUG,"serving cell slice prb is %d", cell_list[ue_k_bs_key].Slice_capacity[s.first] );
+        mdclog_write(MDCLOG_DEBUG,"serving cell slice prb is %d", cell_list[ue_k_bs_key].Slice_capacity[s.first] );
 
         if(cell_list[ue_k_bs_key].Slice_capacity[s.first]   < s.second){
             
@@ -1345,33 +1315,37 @@ mdclog_write(MDCLOG_DEBUG,"serving cell slice prb is %d", cell_list[ue_k_bs_key]
         
     }
  
-
+    // 1. serving cell can provide slices prb to ue
     if(slice_full==false){
        
         new_bs_key = ue_k_bs_key;
         update = stay;
 
-mdclog_write(MDCLOG_DEBUG,"slice is not full, keep serve the ue");
+        mdclog_write(MDCLOG_DEBUG,"slice is not full, keep serve the ue");
 
     }else{
 
-mdclog_write(MDCLOG_DEBUG,"ue-id %s   serving cell %s is full, unable to serve the resources needed, start to do handover procedure", ue_k.Name.c_str(), ue_k.Serv_cell.c_str());
+        mdclog_write(MDCLOG_DEBUG,"ue-id %s   serving cell %s is full, unable to serve the resources needed, start to do handover procedure", ue_k.Name.c_str(), ue_k.Serv_cell.c_str());
 
         //std::cout << "[Debug] Serv cell  :" << ue_k.Serv_cell << " is full \n"; 
     }
 
-     
+    // 2. serving cell can't provide slices prb to ue
+    //    if does neighbor cells exist ?
     if(slice_full==true){
+
+        // check if  neighbor cells exist
+        // 3. handover another ue occupy the most resources to other cell
         if(ue_k.NR_cell.size() == 0) {
 
-mdclog_write(MDCLOG_DEBUG,"ue-id %s   doesn't have neighbor cell, unable to handover it another cell", ue_k.Name.c_str());
+            mdclog_write(MDCLOG_DEBUG,"ue-id %s   doesn't have neighbor cell, unable to handover it another cell", ue_k.Name.c_str());
 
-mdclog_write(MDCLOG_DEBUG,"start to find an another UE occupying the most number of resources, preparing to handover it");
+            mdclog_write(MDCLOG_DEBUG,"start to find an another UE occupying the most number of resources, preparing to handover it");
 
             //std::cout << "[Debug] enter No NR_cell \n"; 
             //std::cout << "[Debug] enter handover procedure \n"; 
-            //Get the list of UE connecting to the BS n such that NR.cell.size==0
-            //find UE k2 occuying the most number of slices UE k request
+            // Get the list of UE connecting to the BS n such that NR.cell.size==0
+            // find UE k2 occuying the most number of slices UE k request
             int occuying_slice_num = 0;
             int occuying_slice_prb = 0;
             int temp_total_slice_prb = 0;
@@ -1381,9 +1355,7 @@ mdclog_write(MDCLOG_DEBUG,"start to find an another UE occupying the most number
                 if(k!=ue_k_key){
 
                     if(ue_k.Serv_cell == ue_list[k].Serv_cell && ue_list[k].NR_cell.size()>0){
-                    
-
-                    
+                  
                         if(ue_list[k].Slice_prb_req.size() > occuying_slice_num){
                             for(const auto&s :  ue_list[k].Slice_prb_req){
                                 temp_total_slice_prb += s.second ;
@@ -1404,14 +1376,9 @@ mdclog_write(MDCLOG_DEBUG,"start to find an another UE occupying the most number
                 
             }
 
-        
-            
-            /*find the emptiest and highest throughput BS that 
-            is in UE_k2 exclude BS n NR_cell.size() == 0*/
-            /* TODO : highest throughput BS */
-            
+            // find the emptiest cell that 
+            // is in UE_k2 exclude BS n NR_cell.size() == 0
             int next_bs_index = 0 ;
-            
             int slice_prb_avail_temp = 0;
             int slicecapacity = 0 ;
 
@@ -1422,7 +1389,6 @@ mdclog_write(MDCLOG_DEBUG,"start to find an another UE occupying the most number
                     }
 
                     if(ue_list[ue_k2_key].NR_cell[n] == cell_list[nn].Name){
-                        
                         if(slicecapacity > slice_prb_avail_temp){
                             next_bs_index = nn;
                             slice_prb_avail_temp = slicecapacity;
@@ -1430,20 +1396,18 @@ mdclog_write(MDCLOG_DEBUG,"start to find an another UE occupying the most number
                         
                     }
                 }
-
-                
             }
 
 
-mdclog_write(MDCLOG_DEBUG,"find the UE %s occupying the most number of resources", ue_list[ue_k2_key].Name.c_str());
-mdclog_write(MDCLOG_DEBUG,"find the Cell %s owing the most number of resources another UE need", cell_list[next_bs_index].Name.c_str());
-mdclog_write(MDCLOG_DEBUG,"start to handover both UE...");
+            mdclog_write(MDCLOG_DEBUG,"find the UE %s occupying the most number of resources", ue_list[ue_k2_key].Name.c_str());
+            mdclog_write(MDCLOG_DEBUG,"find the Cell %s owing the most number of resources another UE need", cell_list[next_bs_index].Name.c_str());
+            mdclog_write(MDCLOG_DEBUG,"start to handover both UE...");
 
             //std::cout << "[Debug] handover another ue  : " << ue_list[ue_k2_key].Name << "\n";
             //std::cout << "[Debug] To BS  : " << cell_list[next_bs_index].Name << "\n";        
             
-            /* Check if the slice next bs ue_k and ue_k2 use is greater than current ue_k2 use
-            and also check if all slices will be provided after handover */ 
+            // Check if the slice next bs ue_k and ue_k2 use is greater than current ue_k2 use
+            // and also check if all slices will be provided after handover  
             // define provide slice or not is using slice prb avail (total slice)
 
             // calculating bn,s >= fs,n + rs
@@ -1451,17 +1415,6 @@ mdclog_write(MDCLOG_DEBUG,"start to handover both UE...");
             int next_provide_ue_k_slices= 0;
             int curr_provide_ue_k2_slices= 0;
     
-            // next provide ue_k slices number 
-            /*
-            Cell ue_k_serv_cell;
-            for(int n = 0 ; n<cell_list.size();n++){
-                if(cell_list[n].Name == ue_k.Serv_cell){
-                    ue_k_serv_cell = cell_list[n] ;
-                    //break the for loop
-                    break; 
-                }    
-            }
-            */
             
             for(const auto& s: ue_k.Slice_prb_req){
                 if(cell_list[ue_k_bs_key].Slice_utilization[s.first] != 1){
@@ -1470,9 +1423,6 @@ mdclog_write(MDCLOG_DEBUG,"start to handover both UE...");
                 }    
             }    
             
-
-
-
             int next_p_k2;
             int p_k2;
             bool no_handover ;
@@ -1512,6 +1462,8 @@ mdclog_write(MDCLOG_DEBUG,"start to handover both UE...");
 
             if(next_provide_ue_k2_slices + next_provide_ue_k_slices >= curr_provide_ue_k2_slices && !no_handover){
                 //std::cout << "[Debug] handover Confirm !!\n";
+                
+                // release  all the resources
                 update = handover_ue_k2;
                 int handover_bs_key = 0;
                 for(int n = 0 ; n < cell_list.size(); n++){
@@ -1521,67 +1473,59 @@ mdclog_write(MDCLOG_DEBUG,"start to handover both UE...");
                     }
                 }
 
+                mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_list[ue_k2_key].Name.c_str());
+
+                mdclog_write(MDCLOG_DEBUG,"previous BS is %s", cell_list[handover_bs_key].Name.c_str());
 
 
-mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_list[ue_k2_key].Name.c_str());
-
-mdclog_write(MDCLOG_DEBUG,"previous BS is %s", cell_list[handover_bs_key].Name.c_str());
-
-
-
+                // release all the resources in its serving  Cell
                 update_load_b(ue_list[ue_k2_key], cell_list[handover_bs_key], slice_list, ue_k.Slice_prb_req, update);
 
 
-                //handover_request();
+                // handover_request();
+                // TODO: send handover request to a real cell
+
+                // update all the value in the UE & Cell
                 update = stay;
                 for(const auto& s: ue_k.Slice_prb_req)
                     ue_k.Slice_prb_req[s.first] = s.second;
 
-                //std::cout << "[Debug] ue_k : " << ue_k.Name << " stays at BS : " << cell_list[ue_k_bs_key].Name << "\n";
-//ue_k.HO_cell = cell_list[ue_k_bs_key].Name;
+ 
+                // update all the value in the UE & Cell
                 update_load_b(ue_k, cell_list[ue_k_bs_key], slice_list, ue_k.Slice_prb_req, update);
 
+                // switch ue to neighbor cell
                 update = switch_to_nr;
                 for(const auto& s: ue_list[ue_k2_key].Slice_prb_req)
                     ue_k.Slice_prb_req[s.first] = s.second;
 
-                //std::cout << "[Debug] ue_k2 : " << ue_list[ue_k2_key].Name << " switchs to  BS : " << cell_list[next_bs_index].Name << "\n";
-//ue_list[ue_k2_key].HO_cell = ue_list[ue_k2_key].Serv_cell;
+                // update all the value in  another UE & Cell
                 update_load_b(ue_list[ue_k2_key], cell_list[next_bs_index], slice_list, ue_k.Slice_prb_req, update);
 
-mdclog_write(MDCLOG_DEBUG,"current BS is %s" , cell_list[next_bs_index].Name.c_str());
-
-
-
-mdclog_write(MDCLOG_DEBUG,"handover done");
+                mdclog_write(MDCLOG_DEBUG,"current BS is %s" , cell_list[next_bs_index].Name.c_str());
+                mdclog_write(MDCLOG_DEBUG,"handover done");
 
             }
         }
+
+        // 2. neighbor cells does exist 
         else{
     
             //std::cout << "[Debug] NR_cell != 0 \n"; 
 
-mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another cell", ue_k.Name.c_str());
+            mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another cell", ue_k.Name.c_str());
 
-  
+            // define the neighbor cell and emptiest cell 
             unordered_map <int, Cell> next_bs_table ; 
-           
             unordered_map <int, Cell> next_emp_bs_table ; 
           
-            
-    
             int curr_bs_capacity = 0;
             int next_bs_capacity = 0;
-             
+            
+            // find all index of neighbor cells
             for(int n=0;n<ue_k.NR_cell.size();n++){
-             
-                for(int nn=0;nn<cell_list.size();nn++){   //  ex 0~100
+                for(int nn=0;nn<cell_list.size();nn++){  
                     if(ue_k.NR_cell[n] == cell_list[nn].Name ){   
-
-
-                        //std::cout <<"Ken debug embb is 0 ? " << cell_list[nn].Slice_capacity["embb"] << "\n";
-
-                       
                         auto next_bs_key = next_bs_table.find(nn);
                         if(next_bs_key ==next_bs_table.end()){
                             //std::cout << "[Debug] push new bs: " ;
@@ -1589,23 +1533,17 @@ mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another c
                             next_bs_table[nn]  = cell_list[nn] ; 
                             
                         }    
-
-  
                         break;
-                    
                     }
                 }
             }     
             
-    
-
-
 
             int next_bs_key_temp = 0;
             
             Cell temp_cell = Cell();
            
-                
+            // see if this neighbor cells can provide slice prb to ue 
             for(const auto& next_bs_iter : next_bs_table){
                 temp_cell = next_bs_iter.second ; 
                 //std::cout   << "temp cell name " << temp_cell.Name << "\n";
@@ -1622,77 +1560,60 @@ mdclog_write(MDCLOG_DEBUG,"ue-id %s   have neighbor cell,  handover it another c
 
                 }
                 if(slice_full != true){ 
-                       
                     next_emp_bs_table[next_bs_key_temp] = temp_cell ; 
                     //std::cout  << "next_bs name :" <<  next_emp_bs_table[next_bs_key_temp].Name <<"\n" ; 
-                  
-                    
                 }
-                
             }
  
              
 
-         
+            // find emptiest neighbor cell
             for(const auto& s: next_emp_bs_table){
                 Cell cell_temp = s.second ;
                 for(int b = 0 ; b < ue_k_slice_name.size() ; b++){
                     string slice_name = ue_k_slice_name[b] ; 
                     next_bs_capacity += cell_temp.Slice_capacity[slice_name] ;
-
                     //cout << "cell name is : " << s.second.Name << "\n";
                     //cout << "total capacity is : "<< next_bs_capacity  << "\n";
-
                 }
                 if(next_bs_capacity >= curr_bs_capacity){
                     curr_bs_capacity = next_bs_capacity ;  
                     new_bs_key = s.first ; 
-                
                 }
-                    
             }
              
               
               
-mdclog_write(MDCLOG_DEBUG,"find the Cell %s owing the most number of resources the UE need", cell_list[new_bs_key].Name.c_str());
-
-mdclog_write(MDCLOG_DEBUG,"start to handover the UE...");
-
-mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_k.Name.c_str());
+            mdclog_write(MDCLOG_DEBUG,"find the Cell %s owing the most number of resources the UE need", cell_list[new_bs_key].Name.c_str());
+            mdclog_write(MDCLOG_DEBUG,"start to handover the UE...");
+            mdclog_write(MDCLOG_DEBUG,"ue-id %s", ue_k.Name.c_str());
 
 
-
+            // switch ue to neighbor cell
             update = switch_to_nr;
-//ue_k.HO_cell = ue_k.Serv_cell ;
-mdclog_write(MDCLOG_DEBUG,"previous BS is %s", ue_k.Serv_cell.c_str());
-
-
+            mdclog_write(MDCLOG_DEBUG,"previous BS is %s", ue_k.Serv_cell.c_str());
+            // update all the value in the UE & Cell
             update_load_b(ue_k, cell_list[new_bs_key], slice_list, ue_k.Slice_prb_req, update);
-        
-
-mdclog_write(MDCLOG_DEBUG,"current BS is %s" , ue_k.Serv_cell.c_str());
-
-mdclog_write(MDCLOG_DEBUG,"handover done");
-
-
+            mdclog_write(MDCLOG_DEBUG,"current BS is %s" , ue_k.Serv_cell.c_str());
+            mdclog_write(MDCLOG_DEBUG,"handover done");
         }
     }
-
-
     else{
         //std::cout  << "[Debug] ue_k new bs is : "<< cell_list[new_bs_key].Name << "\n";
-//ue_k.HO_cell = ue_k.Serv_cell  ;
+        // update all the value in the UE & Cell
         update_load_b(ue_k, cell_list[new_bs_key], slice_list, ue_k.Slice_prb_req, update);
     }
     
 }
-
+//----------------------------------------------------------------------
+// Ken defines function , update_load_b
+// stay: update the value of serving cell
+// switch_to_nr: switch ue to neighbor cell, update the value
+// handover_ue_k2: release all the resources
+//----------------------------------------------------------------------	
 void update_load_b(UE &ue_k, Cell &new_bs, std::vector<std::string> &slice_list, std::unordered_map <std::string, int> &slice_provide_map, Updata_scenario update){
 
-    //    Check if UE can connect to the selected BS*/
-
-
-    //caculate the slice load & slice utililaztion
+    // caculate the slice load & slice utililaztion
     
     switch (update)
     {
@@ -1713,23 +1634,17 @@ void update_load_b(UE &ue_k, Cell &new_bs, std::vector<std::string> &slice_list,
 
             new_bs.Slice_load[s.first] +=  s.second ;
             //std::cout << "[Ken Debug]  slice load is   : "<< new_bs.Slice_load[s.first] << "\n";
-
             new_bs.Slice_capacity[s.first] = new_bs.Slice_prb_avail[s.first] - new_bs.Slice_load[s.first] ; 
-
-            
             new_bs.Slice_utilization[s.first] = (float)new_bs.Slice_load[s.first] / new_bs.Slice_prb_avail[s.first];
             //std::cout << "[Debug] slice is : "<< s.first <<  "  Slice_utilization is : "     << new_bs.Slice_utilization[s.first] << "\n"; 
 
         }
         break;
     case switch_to_nr:
-ue_k.HO_cell = ue_k.Serv_cell;
+        ue_k.HO_cell = ue_k.Serv_cell;
         ue_k.NR_cell.push_back(ue_k.Serv_cell);
-        
         ue_k.Serv_cell = new_bs.Name;
  
-
-        
         for(const auto& s : slice_provide_map)
             ue_k.Slice_prb_used[s.first] = s.second;
         
@@ -1752,45 +1667,26 @@ ue_k.HO_cell = ue_k.Serv_cell;
             //std::cout << "[Ken Debug]  Avail is   : "<< new_bs.Slice_prb_avail[s.first] << "\n";
         
             new_bs.Slice_load[s.first] +=  s.second ;
-
-
             new_bs.Slice_capacity[s.first] = new_bs.Slice_prb_avail[s.first] - new_bs.Slice_load[s.first] ; 
-
-            
             new_bs.Slice_utilization[s.first] = (float)new_bs.Slice_load[s.first] / new_bs.Slice_prb_avail[s.first];
             //std::cout << "[Debug] slice is : "<< s.first <<  "  Slice_utilization is : "     << new_bs.Slice_utilization[s.first] << "\n"; 
-
         }
         break;
     case  handover_ue_k2:
-ue_k.HO_cell = ue_k.Serv_cell;
+        ue_k.HO_cell = ue_k.Serv_cell;
         //std::cout << "[Debug] handover : offload all the prb \n" ;
         for(const auto&s: slice_provide_map){
-        
             new_bs.Slice_load[s.first] -=  s.second ;
             new_bs.Slice_capacity[s.first] = new_bs.Slice_prb_avail[s.first] - new_bs.Slice_load[s.first] ; 
-
-
             new_bs.Slice_utilization[s.first] = (float)new_bs.Slice_load[s.first] / new_bs.Slice_prb_avail[s.first];
             //std::cout << "[Debug] (offload) slice is : "<< s.first <<  "  Slice_load is : "     << new_bs.Slice_load[s.first] << "\n"; 
-
         }        
         break;
     default:
         break;
     }
-
-
-
-
 }
-/*      ==================================================================================================================================================================================
-
-
-								                     							Slice Allocation Algorthim , Author : Ken Dong  
-
-        ==================================================================================================================================================================================                 */
-
+ 
 
 void prediction_callback( Message& mbuf, int mtype, int subid, int len, Msg_component payload,  void* data ) {
 
@@ -1828,161 +1724,125 @@ void prediction_callback( Message& mbuf, int mtype, int subid, int len, Msg_comp
   //     We assume the first cell in the prediction message is the serving cell
 
 
-/* Implement Slice Allocation Algorithm 
-======================================================================================================================================================================================================
-							  Author : Ken Dong
+  //----------------------------------------------------------------------
+  // Ken start project
+  //----------------------------------------------------------------------	
+  mdclog_write(MDCLOG_INFO, "Prediction Callback got the message, start to query influxdb");
 
-
-
-
-
-
-
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-
-======================================================================================================================================================================================================
-
-*/
-mdclog_write(MDCLOG_INFO, "Prediction Callback got the message, start to query influxdb");
-
-      std::vector<UE> UE_Group;
-      std::vector<Cell> Cell_Group;
-      std::vector<std::string> Slice_list;    
+  std::vector<UE> UE_Group;
+  std::vector<Cell> Cell_Group;
+  std::vector<std::string> Slice_list;    
 
   
   
   
-      /* Dummy test */ 
-      query_influxdb(UE_Group, Cell_Group, Slice_list);
+  // get the data , and store it to the struct defined in UE & Cell
+  query_influxdb(UE_Group, Cell_Group, Slice_list);
   
 
 
-      /* Slice Allocation */
+  // do slice allocation
 
-clock_t begin = clock();
-    slice_allocation(UE_Group, Cell_Group, Slice_list);
+  clock_t begin = clock();
+  slice_allocation(UE_Group, Cell_Group, Slice_list);
+  clock_t end = clock();
 
-clock_t end = clock();
-    print_all_group(UE_Group, Cell_Group, Slice_list);
+  // output the outcome of data structure of UE and Cell 
+  // to the file , "outcome_cell.csv" and "outcome_ue.csv"
+  print_all_group(UE_Group, Cell_Group, Slice_list);
 
     
-#if 1
-    printf("******************************************************Calculate Aver BS utilization******************************************************\n");
 
-    std::unordered_map<std::string,float> Aver_BS_utilization;
-    std::vector<std::string> Aver_BS;
-    float Aver_BS_utilization_temp;
-    for(int k=0;k<UE_Group.size();k++){
-        
-        //std::cout << "UE is : " << UE_Group[k].Name <<"\n";
-        
-        //auto ite = Aver_BS.find(UE_Group[k].Serv_cell);
-        for(const auto& s: UE_Group[k].serv_slice_utilization){
-            Aver_BS_utilization_temp = 0 ;
-            if(std::find(Aver_BS.begin(),Aver_BS.end(),UE_Group[k].Serv_cell) == Aver_BS.end()){
-                Aver_BS_utilization_temp += s.second;
-                //std::cout << "Serv is : " << UE_Group[k].Serv_cell << ", usage is : "<< s.second << "\n";
-                Aver_BS_utilization[UE_Group[k].Serv_cell] += Aver_BS_utilization_temp*1/3;
-            }
-        }            
-        Aver_BS.push_back(UE_Group[k].Serv_cell);    
+  printf("******************************************************Calculate Aver BS utilization******************************************************\n");
+  //----------------------------------------------------------------------
+  // Ken Calculate Average utilization
+  // Calculate the sum of each cell's utilization
+  // and divide by how many cell is serving ue
+  //----------------------------------------------------------------------	
+  std::unordered_map<std::string,float> Aver_BS_utilization;
+  std::vector<std::string> Aver_BS;
+  float Aver_BS_utilization_temp;
 
-
-        
-        
-    }
+  // iterate all ue to get their serving cell's utilization
+  for(int k=0;k<UE_Group.size();k++){
+      //std::cout << "UE is : " << UE_Group[k].Name <<"\n";
+      //auto ite = Aver_BS.find(UE_Group[k].Serv_cell);
+      for(const auto& s: UE_Group[k].serv_slice_utilization){
+          Aver_BS_utilization_temp = 0 ; // total utilization of a cell
+          if(std::find(Aver_BS.begin(),Aver_BS.end(),UE_Group[k].Serv_cell) == Aver_BS.end()){
+              Aver_BS_utilization_temp += s.second;
+              //std::cout << "Serv is : " << UE_Group[k].Serv_cell << ", usage is : "<< s.second << "\n";
+              Aver_BS_utilization[UE_Group[k].Serv_cell] += Aver_BS_utilization_temp*1/3; // three slice 
+          }
+      }            
+      Aver_BS.push_back(UE_Group[k].Serv_cell);    
+  }
        
 
-    int it_cnt = 0 ;
-    float Tot_BS_utilization = 0;
-    for(const auto  it: Aver_BS_utilization){
-        Tot_BS_utilization += it.second;
-        it_cnt++;
-        //std::cout  << it.first << ":" << it.second << "\n";    
-        
-    } 
+  int it_cnt = 0 ;
+  float Tot_BS_utilization = 0;
+  for(const auto  it: Aver_BS_utilization){
+      Tot_BS_utilization += it.second;
+      it_cnt++;
+      //std::cout  << it.first << ":" << it.second << "\n";    
+      
+  } 
     
+  // store it in the file ,   "outcome.csv"
+  string line;
+  string outcome = "outcome.csv";
 
-    string line;
-    string outcome = "outcome.csv";
+  ifstream fin(outcome.c_str(), std::ios::in);
+  if(fin.good()){
+      stringstream buffer;
+      while (getline(fin, line)) buffer<<line+",\n";
 
-    ifstream fin(outcome.c_str(), std::ios::in);
-    if(fin.good()){
-        stringstream buffer;
-        while (getline(fin, line)) buffer<<line+",\n";
-
-        ofstream fout(outcome.c_str(), std::ios::out);
-        buffer << Tot_BS_utilization/it_cnt << "," << (double)(end - begin) / CLOCKS_PER_SEC << endl ;
-        fout << buffer.rdbuf();
-    }  
-     
-    printf("******************************************************aver BS utilization = %f******************************************************\n", Tot_BS_utilization/it_cnt);
-    //printf("**************************************Counter = %d**************************************", it_cnt);
-    printf("******************************************************elapsed    time     = %f******************************************************\n", (double)(end - begin) / CLOCKS_PER_SEC);
-#endif
-
-/* using the source code from offa InfluxDB C++ client library branch master */
-// write influxdb with a point
-for(int i=0 ; i < UE_Group.size() ; i++){
-    db_influx->write(influxdb::Point{"slice_usage"}
-    //.addTag("ue-id", UE_Group[i].Name  )   //  
-    .addField("ueid", UE_Group[i].Name  )   // car-1
-    .addField("serv_cell"  , UE_Group[i].Serv_cell  )   // car-1
-    .addField("nr_cell_0", UE_Group[i].NR_cell[0]  )
-    .addField("nr_cell_1", UE_Group[i].NR_cell[1]  )
-    .addField("nr_cell_2", UE_Group[i].NR_cell[2]  )
-    .addField("nr_cell_3", UE_Group[i].NR_cell[3]  )
-    .addField("nr_cell_4", UE_Group[i].NR_cell[4]  )
-    .addField("cell_hands_over",  UE_Group[i].HO_cell )
-    .addField("serv_cell_slice_usage_urllc",  UE_Group[i].serv_slice_utilization["urllc"] )  
-    .addField("nr_cell_slice_usage_0_urllc", UE_Group[i].NR_Slice_utilization[0]["urllc"]  )
-    .addField("nr_cell_slice_usage_1_urllc", UE_Group[i].NR_Slice_utilization[1]["urllc"]  )
-    .addField("nr_cell_slice_usage_2_urllc", UE_Group[i].NR_Slice_utilization[2]["urllc"]  )
-    .addField("nr_cell_slice_usage_3_urllc", UE_Group[i].NR_Slice_utilization[3]["urllc"]  )
-    .addField("nr_cell_slice_usage_4_urllc", UE_Group[i].NR_Slice_utilization[4]["urllc"]  )
-    .addField("serv_cell_slice_usage_mmtc",  UE_Group[i].serv_slice_utilization["mmtc"] ) 
-    .addField("nr_cell_slice_usage_0_mmtc", UE_Group[i].NR_Slice_utilization[0]["mmtc"]  )
-    .addField("nr_cell_slice_usage_1_mmtc", UE_Group[i].NR_Slice_utilization[1]["mmtc"]  )
-    .addField("nr_cell_slice_usage_2_mmtc", UE_Group[i].NR_Slice_utilization[2]["mmtc"]  )
-    .addField("nr_cell_slice_usage_3_mmtc", UE_Group[i].NR_Slice_utilization[3]["mmtc"]  )
-    .addField("nr_cell_slice_usage_4_mmtc", UE_Group[i].NR_Slice_utilization[4]["mmtc"]  )
-    .addField("serv_cell_slice_usage_embb",  UE_Group[i].serv_slice_utilization["embb"] )
-    .addField("nr_cell_slice_usage_0_embb", UE_Group[i].NR_Slice_utilization[0]["embb"]  )
-    .addField("nr_cell_slice_usage_1_embb", UE_Group[i].NR_Slice_utilization[1]["embb"]  )
-    .addField("nr_cell_slice_usage_2_embb", UE_Group[i].NR_Slice_utilization[2]["embb"]  )
-    .addField("nr_cell_slice_usage_3_embb", UE_Group[i].NR_Slice_utilization[3]["embb"]  )
-    .addField("nr_cell_slice_usage_4_embb", UE_Group[i].NR_Slice_utilization[4]["embb"]  )
-    );
- 
- 
-}
-/* Implement Slice Allocation Algorithm 
-======================================================================================================================================================================================================
-							  Author : Ken Dong
+      ofstream fout(outcome.c_str(), std::ios::out);
+      buffer << Tot_BS_utilization/it_cnt << "," << (double)(end - begin) / CLOCKS_PER_SEC << endl ;
+      fout << buffer.rdbuf();
+  }  
+    
+  printf("******************************************************aver BS utilization = %f******************************************************\n", Tot_BS_utilization/it_cnt);
+  //printf("**************************************Counter = %d**************************************", it_cnt);
+  printf("******************************************************elapsed    time     = %f******************************************************\n", (double)(end - begin) / CLOCKS_PER_SEC);
 
 
 
-
-
-
-
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-
-=======================================================================================================================================================================================================
-
-*/
+  // write influxdb with a point
+  for(int i=0 ; i < UE_Group.size() ; i++){
+      db_influx->write(influxdb::Point{"slice_usage"}
+      //.addTag("ue-id", UE_Group[i].Name  )   
+      .addField("ueid", UE_Group[i].Name  )   
+      .addField("serv_cell"  , UE_Group[i].Serv_cell  )   
+      .addField("nr_cell_0", UE_Group[i].NR_cell[0]  )
+      .addField("nr_cell_1", UE_Group[i].NR_cell[1]  )
+      .addField("nr_cell_2", UE_Group[i].NR_cell[2]  )
+      .addField("nr_cell_3", UE_Group[i].NR_cell[3]  )
+      .addField("nr_cell_4", UE_Group[i].NR_cell[4]  )
+      .addField("cell_hands_over",  UE_Group[i].HO_cell )
+      .addField("serv_cell_slice_usage_urllc",  UE_Group[i].serv_slice_utilization["urllc"] )  
+      .addField("nr_cell_slice_usage_0_urllc", UE_Group[i].NR_Slice_utilization[0]["urllc"]  )
+      .addField("nr_cell_slice_usage_1_urllc", UE_Group[i].NR_Slice_utilization[1]["urllc"]  )
+      .addField("nr_cell_slice_usage_2_urllc", UE_Group[i].NR_Slice_utilization[2]["urllc"]  )
+      .addField("nr_cell_slice_usage_3_urllc", UE_Group[i].NR_Slice_utilization[3]["urllc"]  )
+      .addField("nr_cell_slice_usage_4_urllc", UE_Group[i].NR_Slice_utilization[4]["urllc"]  )
+      .addField("serv_cell_slice_usage_mmtc",  UE_Group[i].serv_slice_utilization["mmtc"] ) 
+      .addField("nr_cell_slice_usage_0_mmtc", UE_Group[i].NR_Slice_utilization[0]["mmtc"]  )
+      .addField("nr_cell_slice_usage_1_mmtc", UE_Group[i].NR_Slice_utilization[1]["mmtc"]  )
+      .addField("nr_cell_slice_usage_2_mmtc", UE_Group[i].NR_Slice_utilization[2]["mmtc"]  )
+      .addField("nr_cell_slice_usage_3_mmtc", UE_Group[i].NR_Slice_utilization[3]["mmtc"]  )
+      .addField("nr_cell_slice_usage_4_mmtc", UE_Group[i].NR_Slice_utilization[4]["mmtc"]  )
+      .addField("serv_cell_slice_usage_embb",  UE_Group[i].serv_slice_utilization["embb"] )
+      .addField("nr_cell_slice_usage_0_embb", UE_Group[i].NR_Slice_utilization[0]["embb"]  )
+      .addField("nr_cell_slice_usage_1_embb", UE_Group[i].NR_Slice_utilization[1]["embb"]  )
+      .addField("nr_cell_slice_usage_2_embb", UE_Group[i].NR_Slice_utilization[2]["embb"]  )
+      .addField("nr_cell_slice_usage_3_embb", UE_Group[i].NR_Slice_utilization[3]["embb"]  )
+      .addField("nr_cell_slice_usage_4_embb", UE_Group[i].NR_Slice_utilization[4]["embb"]  )
+      );
+  
+  
+  }
+  
 
   int serving_cell_throughput = 0;
   int highest_throughput = 0;
